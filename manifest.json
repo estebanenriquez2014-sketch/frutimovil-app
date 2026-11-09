@@ -3,7 +3,7 @@
   "short_name": "Frutimóvil",
   "description": "Fruti-Bot de Frutimóvil",
   "display": "standalone",
-  "background_color": "#FFF7FA",
+  "background_color": "#FFFFFF",
   "theme_color": "#7B1E3A",
   "lang": "es",
   "icons": [
@@ -20,7 +20,7 @@
       "purpose": "any"
     },
     {
-      "src": "icono-512.png",
+      "src": "icono-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
