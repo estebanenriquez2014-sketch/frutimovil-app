@@ -1,0 +1,29 @@
+{
+  "name": "Frutimóvil",
+  "short_name": "Frutimóvil",
+  "description": "Fruti-Bot de Frutimóvil",
+  "display": "standalone",
+  "background_color": "#FFF7FA",
+  "theme_color": "#7B1E3A",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icono-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
