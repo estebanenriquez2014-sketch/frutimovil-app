@@ -225,11 +225,30 @@ const hoyISO = () => { const d = new Date(); return new Date(d.getTime() - d.get
 function proximoMartes() { const d = new Date(); const add = ((2 - d.getDay() + 7) % 7) || 7; d.setDate(d.getDate() + add); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
 function toast(t) { const x = $('toast'); x.textContent = t; x.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => x.classList.remove('on'), 2600); }
 
+const espera = ms => new Promise(r => setTimeout(r, ms));
 async function api(body) {
-  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ token }, body)) });
-  if (r.status === 401) throw new Error('Este link no es válido. Pídele a Esteban tu link de acceso.');
-  if (!r.ok) throw new Error('El servidor no respondió (' + r.status + ').');
-  return r.json();
+  // Reintenta solo cuando el servidor está reiniciando (502/503/504) o no contesta; los registros no se duplican
+  // porque el Cerebro solo escribe al confirmar con "Sí".
+  const reintentable = !(body.boton_id === 'si');
+  let ultimo = null;
+  for (let intento = 1; intento <= (reintentable ? 3 : 1); intento++) {
+    const ctl = new AbortController();
+    const reloj = setTimeout(() => ctl.abort(), 45000);
+    try {
+      const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ token }, body)), signal: ctl.signal });
+      clearTimeout(reloj);
+      if (r.status === 401) throw Object.assign(new Error('Este link no es válido. Pídele a Esteban tu link de acceso.'), { final: true });
+      if ([502, 503, 504].includes(r.status)) { ultimo = new Error('El servidor se está reiniciando. Intenta de nuevo en un minuto.'); await espera(4000 * intento); continue; }
+      if (!r.ok) throw Object.assign(new Error('El servidor tuvo un problema (' + r.status + '). Intenta de nuevo.'), { final: true });
+      return await r.json();
+    } catch (e) {
+      clearTimeout(reloj);
+      if (e.final) throw e;
+      ultimo = e.name === 'AbortError' ? new Error('El servidor está muy lento. Revisa en un minuto si se registró antes de repetir.') : new Error('Sin conexión con el servidor. Revisa tu internet.');
+      if (intento < 3 && reintentable) await espera(3000 * intento);
+    }
+  }
+  throw ultimo;
 }
 
 /* ---------- Navegación ---------- */
