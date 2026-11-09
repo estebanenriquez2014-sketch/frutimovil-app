@@ -62,6 +62,9 @@ h2 small{text-transform:none;letter-spacing:0;font-weight:600;color:var(--berry)
 .item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--linea)}
 .item:last-child{border-bottom:0;padding-bottom:2px}.item:first-child{padding-top:2px}
 .av{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-size:20px;flex-shrink:0;background:var(--rosa)}
+.av.foto{background-size:cover;background-position:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.av.grande{width:58px;height:58px;border-radius:17px}
+.sin .av.foto{filter:grayscale(.6);opacity:.7}
 .item .t{font-weight:700;font-size:15px}
 .item .s{font-size:12.5px;color:var(--muted);margin-top:1px}
 .item .der{margin-left:auto;text-align:right;flex-shrink:0}
@@ -211,6 +214,8 @@ const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const EMOJI = { 'FRE-GR': '🍓', 'FRE-DP': '🍓', 'MOR-01': '🫐', 'FRA-PR': '❤️', 'FRA-MD': '💗', 'ARA-01': '🫐', 'MIX-20': '🧊' };
+const FOTO = { 'FRE-GR': 'fresa-grande', 'FRE-DP': 'fresa-despistonada', 'MOR-01': 'mora', 'FRA-PR': 'frambuesa-primera', 'FRA-MD': 'frambuesa-madura', 'ARA-01': 'arandano', 'MIX-20': 'mix-congelado' };
+const avProd = (cod, cls) => FOTO[cod] ? '<div class="av foto ' + (cls || '') + '" style="background-image:url(fotos/' + FOTO[cod] + '.jpg)"></div>' : '<div class="av ' + (cls || '') + '">' + (EMOJI[cod] || '🍓') + '</div>';
 const din = n => '$' + (Number(n) || 0).toFixed(2);
 const kg = (n, u) => (Math.round((Number(n) || 0) * 100) / 100) + (u === 'funda' ? ' fundas' : ' kg');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -266,10 +271,10 @@ function pintar() {
   h += '<button class="mini" onclick="ir(\'cobros\')"><div class="et">Debes a proveedores</div><div class="v">' + din(N.debes) + '</div><div class="pie">Compras del mes ' + din(N.mes.compras) + '</div></button></div>';
   if (TB.alertas.length) {
     h += '<h2>⚠️ Fruta por vencer</h2>';
-    TB.alertas.forEach(a => { h += '<div class="alerta ' + a.estado + '"><div class="av" style="background:#fff">' + (EMOJI[a.codigo] || '🍓') + '</div><div><div class="t">' + esc(a.nombre) + ' · ' + kg(a.kg, a.unidad) + '</div><div class="s">' + (a.estado === 'hoy' ? 'Vence hoy: despáchala primero' : 'Vence mañana') + '</div></div><button onclick="abrirForm(\'merma\',{producto:\'' + a.codigo + '\'})">Registrar</button></div>'; });
+    TB.alertas.forEach(a => { h += '<div class="alerta ' + a.estado + '">' + avProd(a.codigo) + '<div><div class="t">' + esc(a.nombre) + ' · ' + kg(a.kg, a.unidad) + '</div><div class="s">' + (a.estado === 'hoy' ? 'Vence hoy: despáchala primero' : 'Vence mañana') + '</div></div><button onclick="abrirForm(\'merma\',{producto:\'' + a.codigo + '\'})">Registrar</button></div>'; });
   }
   h += '<h2>🛒 Hay que comprar <small onclick="ir(\'pedidos\')">Ver pedidos</small></h2>';
-  if (TB.comprar.length) { h += '<div class="card">'; TB.comprar.forEach(c => { h += '<div class="item"><div class="av">' + (EMOJI[c.codigo] || '🍓') + '</div><div><div class="t">' + esc(c.nombre) + '</div><div class="s">Piden ' + kg(c.piden, c.unidad) + ' · hay ' + kg(c.kg, c.unidad) + '</div></div><div class="der"><div class="num" style="color:var(--berry)">' + kg(c.comprar, c.unidad) + '</div></div></div>'; }); h += '</div>'; }
+  if (TB.comprar.length) { h += '<div class="card">'; TB.comprar.forEach(c => { h += '<div class="item">' + avProd(c.codigo) + '<div><div class="t">' + esc(c.nombre) + '</div><div class="s">Piden ' + kg(c.piden, c.unidad) + ' · hay ' + kg(c.kg, c.unidad) + '</div></div><div class="der"><div class="num" style="color:var(--berry)">' + kg(c.comprar, c.unidad) + '</div></div></div>'; }); h += '</div>'; }
   else h += '<div class="card vacio"><div class="e">✅</div>' + (TB.pedidos.length ? 'El stock alcanza para los pedidos' : 'No hay pedidos pendientes') + '</div>';
   h += '<h2>🚚 Próximas entregas</h2>';
   if (TB.pedidos.length) { h += '<div class="card">'; TB.pedidos.slice(0, 4).forEach(p => { h += '<div class="item"><div class="av">🚚</div><div><div class="t">' + esc(p.cliente) + '</div><div class="s">' + fechaLarga(p.entrega) + ' · ' + p.items.length + ' producto' + (p.items.length > 1 ? 's' : '') + '</div></div><div class="der"><div class="num">' + din(p.total) + '</div></div></div>'; }); h += '</div>'; }
@@ -283,7 +288,7 @@ function pintar() {
   TB.stock.forEach(s => {
     const pct = s.minimo > 0 ? Math.min(100, Math.round(s.kg / (s.minimo * 2) * 100)) : (s.kg > 0 ? 100 : 0);
     const col = s.estado === 'hoy' ? 'var(--rojo)' : s.estado === 'manana' ? 'var(--ambar)' : s.kg < s.minimo ? 'var(--ambar)' : 'var(--verde)';
-    h += '<div class="card"><div class="item" style="padding:0;border:0"><div class="av">' + (EMOJI[s.codigo] || '🍓') + '</div><div><div class="t">' + esc(s.nombre) + '</div><div class="s">' + (s.kg > 0 ? (s.diasViejo === 0 ? 'Lo más viejo es de hoy' : 'Lo más viejo: hace ' + s.diasViejo + ' día' + (s.diasViejo > 1 ? 's' : '')) + (s.lotes > 1 ? ' · ' + s.lotes + ' lotes' : '') : 'No hay en la refri') + '</div></div><div class="der"><div class="num">' + kg(s.kg, s.unidad) + '</div>' + chipEstado(s) + '</div></div>' + (s.kg > 0 || s.minimo > 0 ? '<div class="barra"><i style="width:' + pct + '%;background:' + col + '"></i></div>' : '') + (s.piden > 0 ? '<div class="s" style="font-size:12.5px;color:var(--muted);margin-top:6px">Piden ' + kg(s.piden, s.unidad) + (s.comprar > 0 ? ' · <b style="color:var(--berry)">comprar ' + kg(s.comprar, s.unidad) + '</b>' : ' · alcanza ✅') + '</div>' : '') + '</div>';
+    h += '<div class="card' + (s.kg > 0 ? '' : ' sin') + '"><div class="item" style="padding:0;border:0">' + avProd(s.codigo, 'grande') + '<div><div class="t">' + esc(s.nombre) + '</div><div class="s">' + (s.kg > 0 ? (s.diasViejo === 0 ? 'Lo más viejo es de hoy' : 'Lo más viejo: hace ' + s.diasViejo + ' día' + (s.diasViejo > 1 ? 's' : '')) + (s.lotes > 1 ? ' · ' + s.lotes + ' lotes' : '') : 'No hay en la refri') + '</div></div><div class="der"><div class="num">' + kg(s.kg, s.unidad) + '</div>' + chipEstado(s) + '</div></div>' + (s.kg > 0 || s.minimo > 0 ? '<div class="barra"><i style="width:' + pct + '%;background:' + col + '"></i></div>' : '') + (s.piden > 0 ? '<div class="s" style="font-size:12.5px;color:var(--muted);margin-top:6px">Piden ' + kg(s.piden, s.unidad) + (s.comprar > 0 ? ' · <b style="color:var(--berry)">comprar ' + kg(s.comprar, s.unidad) + '</b>' : ' · alcanza ✅') + '</div>' : '') + '</div>';
   });
   h += '<button class="btn sec ancho" style="margin-top:14px" onclick="abrirForm(\'compra\')">🧾 Registrar compra</button>';
   $('v-stock').innerHTML = h;
