@@ -151,6 +151,38 @@ select.inp{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 5
 .esq{background:linear-gradient(90deg,#f3eaee 25%,#faf3f6 50%,#f3eaee 75%);background-size:200% 100%;animation:esq 1.2s infinite;border-radius:var(--r);height:90px;margin-bottom:10px}
 @keyframes esq{to{background-position:-200% 0}}
 @media (min-width:700px){main{max-width:640px;margin:0 auto;width:100%}nav{max-width:640px;margin:0 auto;border-radius:20px 20px 0 0}.hoja{max-width:560px;margin:0 auto}}
+/* Contactos del teléfono */
+.contacto{display:block;width:100%;margin:-4px 0 12px;padding:10px;border-radius:12px;border:1.5px dashed var(--rosa2);background:var(--rosa);color:var(--vino);font-weight:700;font-size:14px}
+/* Comprobante */
+#compro{position:fixed;inset:0;z-index:80;background:#eee;overflow:auto;display:none;padding:14px 12px 90px}
+#compro.on{display:block}
+.doc{background:#fff;color:#222;max-width:560px;margin:0 auto;border-radius:14px;padding:22px 20px;box-shadow:0 4px 18px rgba(0,0,0,.12);font-size:14px}
+.doc .cab{display:flex;align-items:center;gap:12px;border-bottom:3px solid #7B1E3A;padding-bottom:12px}
+.doc .cab img{width:58px;height:58px;border-radius:12px}
+.doc .marca{font-size:21px;font-weight:800;color:#7B1E3A;line-height:1.1}
+.doc .marca small{display:block;font-size:12px;font-weight:600;color:#777}
+.doc .num{margin-left:auto;text-align:right;font-size:12px;color:#555}
+.doc .num b{display:block;font-size:16px;color:#222}
+.doc h4{margin:16px 0 4px;font-size:17px;color:#7B1E3A}
+.doc .meta{color:#555;font-size:13px;line-height:1.6}
+.doc table{width:100%;border-collapse:collapse;margin-top:12px}
+.doc th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:#777;border-bottom:1.5px solid #ddd;padding:6px 4px}
+.doc td{padding:8px 4px;border-bottom:1px solid #eee;vertical-align:top}
+.doc td.d,.doc th.d{text-align:right;white-space:nowrap}
+.doc .tot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px 14px;background:#FFF1F5;border-radius:10px;font-size:18px;font-weight:800;color:#7B1E3A}
+.doc .extra{margin-top:10px;color:#444;font-size:13px}
+.doc .firmas{display:flex;gap:24px;margin-top:46px}
+.doc .firmas div{flex:1;border-top:1px solid #999;padding-top:6px;text-align:center;font-size:12px;color:#666}
+.doc .pie{margin-top:18px;text-align:center;font-size:11px;color:#999}
+.compro-bts{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom) + 10px);background:#fff;box-shadow:0 -2px 12px rgba(0,0,0,.1)}
+.compro-bts button{flex:1}
+@media print{
+  body>*:not(#compro){display:none!important}
+  html,body{height:auto!important;overflow:visible!important;background:#fff!important}
+  #compro{position:static;display:block;background:#fff;padding:0;overflow:visible}
+  .doc{box-shadow:none;max-width:none;border-radius:0}
+  .compro-bts{display:none!important}
+}
 </style>
 </head>
 <body>
@@ -299,7 +331,7 @@ function pintar() {
   if (TB.pedidos.length) { h += '<div class="card">'; TB.pedidos.slice(0, 4).forEach(p => { h += '<div class="item"><div class="av">🚚</div><div><div class="t">' + esc(p.cliente) + '</div><div class="s">' + fechaLarga(p.entrega) + ' · ' + p.items.length + ' producto' + (p.items.length > 1 ? 's' : '') + '</div></div><div class="der"><div class="num">' + din(p.total) + '</div></div></div>'; }); h += '</div>'; }
   else h += '<div class="card vacio"><div class="e">📭</div>Sin entregas pendientes</div>';
   h += '<h2>📈 Este mes</h2><div class="dos" style="margin-top:0"><div class="mini"><div class="et">Vendido</div><div class="v">' + din(N.mes.vendido) + '</div><div class="pie">Ganancia ' + din(N.mes.ganancia) + '</div></div><div class="mini"><div class="et">Fruta botada</div><div class="v ' + (N.mes.botado > 0 ? 'rojo' : '') + '">' + din(N.mes.botado) + '</div><div class="pie">' + (N.mes.botado > 0 ? 'Plata perdida' : '¡Nada botado! 👏') + '</div></div></div>';
-  if (TB.actividad.length) { h += '<h2>🕒 Lo último</h2><div class="card">'; TB.actividad.forEach(a => { h += '<div class="item"><div><div class="t" style="font-size:14px;font-weight:600">' + esc(a.texto) + '</div><div class="s">' + esc(a.usuario) + ' · ' + esc(String(a.fecha).slice(5, 16).replace('-', '/')) + '</div></div></div>'; }); h += '</div>'; }
+  if (TB.actividad.length) { h += '<h2>🕒 Lo último <small onclick="verMovimientos()">Ver todos 🧾</small></h2><div class="card">' + filasMovimientos(TB.actividad.slice(0, 6)) + '</div>'; }
   $('v-inicio').innerHTML = h;
 
   // Stock
@@ -340,7 +372,7 @@ function pintar() {
 function abrirHoja(html) { $('hojaC').innerHTML = html; $('velo').classList.add('on'); $('hoja').classList.add('on'); }
 function cerrarHoja() { $('velo').classList.remove('on'); $('hoja').classList.remove('on'); }
 $('velo').onclick = cerrarHoja;
-$('fab').onclick = () => abrirHoja('<h3>¿Qué quieres registrar?</h3><div class="acciones">' + [['compra', '🧾', 'Compra'], ['pedido', '📝', 'Pedido'], ['venta', '💰', 'Venta'], ['entrega', '🚚', 'Entrega'], ['cobro', '💵', 'Cobro'], ['pago', '🤝', 'Pago a proveedor'], ['merma', '🗑️', 'Fruta botada'], ['bot', '💬', 'Escribir al bot']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="e">' + a[1] + '</span>' + a[2] + '</button>').join('') + '</div>');
+$('fab').onclick = () => abrirHoja('<h3>¿Qué quieres registrar?</h3><div class="acciones">' + [['documento', '📷', 'Orden o factura'], ['compra', '🧾', 'Compra'], ['pedido', '📝', 'Pedido'], ['venta', '💰', 'Venta'], ['entrega', '🚚', 'Entrega'], ['cobro', '💵', 'Cobro'], ['pago', '🤝', 'Pago a proveedor'], ['merma', '🗑️', 'Fruta botada'], ['bot', '💬', 'Escribir al bot']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="e">' + a[1] + '</span>' + a[2] + '</button>').join('') + '</div>');
 
 const L = () => (TB && TB.listas) || { productos: [], clientes: [], proveedores: [], presentaciones: [] };
 const opt = (arr, val, vacio) => (vacio ? '<option value="">' + vacio + '</option>' : '') + arr.map(o => { const v = typeof o === 'string' ? o : o.v; const t = typeof o === 'string' ? o : o.t; return '<option value="' + esc(v) + '"' + (v === val ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('');
@@ -353,13 +385,18 @@ function renglon(tipo, d) {
 function abrirForm(tipo, pre) {
   pre = pre || {};
   if (tipo === 'bot') { cerrarHoja(); ir('bot'); setTimeout(() => $('txt').focus(), 250); return; }
+  if (tipo === 'documento') {
+    abrirHoja('<h3>📷 Orden o factura</h3><p style="color:var(--muted);font-size:14px;margin:-6px 0 14px">Sube la orden de compra de un cliente o la factura de un proveedor. Leo el documento y te armo el pedido o la compra para que lo revises.</p><label class="btn prim ancho" style="display:block;text-align:center">📸 Tomar foto o elegir archivo<input type="file" id="archivoDoc" accept="image/*,application/pdf" style="display:none"></label><div id="estadoDoc" style="text-align:center;color:var(--muted);font-size:14px;margin-top:14px"></div>');
+    $('archivoDoc').onchange = e => subirDocumento(e.target.files[0]);
+    return;
+  }
   const cl = L().clientes.map(c => ({ v: c.nombre, t: c.nombre + (c.tipo === 'MAYORISTA' ? ' · mayorista' : '') }));
   let h = '';
-  if (tipo === 'compra') h = '<h3>🧾 Compra</h3><label class="campo"><span>Proveedor</span><select class="inp" name="proveedor">' + opt(L().proveedores, pre.proveedor, 'Elige proveedor') + '<option value="__otro">Otro…</option></select></label><input class="inp" name="proveedor_otro" placeholder="Nombre del proveedor" style="display:none;margin:-4px 0 12px"><div id="renglones">' + renglon('compra', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'compra\')">＋ Otra fruta</button>';
-  if (tipo === 'pedido') h = '<h3>📝 Pedido</h3><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Elige cliente') + '<option value="__otro">Cliente nuevo…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px"><label class="campo"><span>Fecha de entrega</span><input class="inp" type="date" name="fecha" value="' + proximoMartes() + '"></label><div id="renglones">' + renglon('pedido', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'pedido\')">＋ Otra fruta</button>';
-  if (tipo === 'venta') h = '<h3>💰 Venta</h3><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Cliente final') + '</select></label><label class="campo"><span>Fruta</span><select class="inp" name="producto" onchange="presentaciones(this.value)">' + prodOpts(pre.producto) + '</select></label><div class="seg" id="segVenta"><button type="button" class="on" data-m="tarrina" onclick="modoVenta(this)">Tarrinas</button><button type="button" data-m="kg" onclick="modoVenta(this)">Por kilo</button></div><div id="ventaTarrina"><label class="campo"><span>Presentación</span><select class="inp" name="presentacion" id="selPres"></select></label><label class="campo"><span>¿Cuántas?</span><input class="inp" inputmode="numeric" name="tarrinas" placeholder="Ej: 3"></label></div><div id="ventaKg" style="display:none"><label class="campo"><span>Kilos</span><input class="inp" inputmode="decimal" name="kilos" placeholder="Ej: 2"></label></div><label class="campo"><span>Precio unitario (opcional)</span><input class="inp" inputmode="decimal" name="precio" placeholder="Si lo dejas vacío uso la lista de precios"></label>';
+  if (tipo === 'compra') h = '<h3>🧾 Compra</h3><label class="campo"><span>Proveedor</span><select class="inp" name="proveedor">' + opt(L().proveedores, pre.proveedor, 'Elige proveedor') + '<option value="__otro">Otro…</option></select></label><input class="inp" name="proveedor_otro" placeholder="Nombre del proveedor" style="display:none;margin:-4px 0 12px">' + btnContacto('proveedor') + '<div id="renglones">' + renglon('compra', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'compra\')">＋ Otra fruta</button>';
+  if (tipo === 'pedido') h = '<h3>📝 Pedido</h3><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Elige cliente') + '<option value="__otro">Cliente nuevo…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<label class="campo"><span>Fecha de entrega</span><input class="inp" type="date" name="fecha" value="' + proximoMartes() + '"></label><div id="renglones">' + renglon('pedido', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'pedido\')">＋ Otra fruta</button>';
+  if (tipo === 'venta') h = '<h3>💰 Venta</h3><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Cliente final') + '<option value="__otro">Otro cliente…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<label class="campo"><span>Fruta</span><select class="inp" name="producto" onchange="presentaciones(this.value)">' + prodOpts(pre.producto) + '</select></label><div class="seg" id="segVenta"><button type="button" class="on" data-m="tarrina" onclick="modoVenta(this)">Tarrinas</button><button type="button" data-m="kg" onclick="modoVenta(this)">Por kilo</button></div><div id="ventaTarrina"><label class="campo"><span>Presentación</span><select class="inp" name="presentacion" id="selPres"></select></label><label class="campo"><span>¿Cuántas?</span><input class="inp" inputmode="numeric" name="tarrinas" placeholder="Ej: 3"></label></div><div id="ventaKg" style="display:none"><label class="campo"><span>Kilos</span><input class="inp" inputmode="decimal" name="kilos" placeholder="Ej: 2"></label></div><label class="campo"><span>Precio unitario (opcional)</span><input class="inp" inputmode="decimal" name="precio" placeholder="Si lo dejas vacío uso la lista de precios"></label>';
   if (tipo === 'entrega') { const ps = (TB && TB.pedidos) || []; h = '<h3>🚚 Entrega</h3>' + (ps.length ? '<label class="campo"><span>¿Qué pedido entregaste?</span><select class="inp" name="pedido">' + opt(ps.map(p => ({ v: p.id, t: p.cliente + ' · ' + p.id + ' · ' + din(p.total) })), pre.pedido) + '</select></label>' : '<div class="vacio">No hay pedidos pendientes.</div>'); }
-  if (tipo === 'cobro') h = '<h3>💵 Cobro</h3><label class="campo"><span>¿Quién pagó?</span><select class="inp" name="cliente">' + opt(cl.concat(((TB && TB.deudas) || []).filter(d => !L().clientes.some(c => c.nombre === d.cliente)).map(d => ({ v: d.cliente, t: d.cliente }))), pre.cliente, 'Elige cliente') + '</select></label><label class="campo"><span>Monto</span><input class="inp" inputmode="decimal" name="monto" placeholder="$" value="' + (pre.monto || '') + '"></label><div class="seg"><button type="button" class="on" data-m="transferencia" onclick="segOn(this)">Transferencia</button><button type="button" data-m="efectivo" onclick="segOn(this)">Efectivo</button></div>';
+  if (tipo === 'cobro') h = '<h3>💵 Cobro</h3><label class="campo"><span>¿Quién pagó?</span><select class="inp" name="cliente">' + opt(cl.concat(((TB && TB.deudas) || []).filter(d => !L().clientes.some(c => c.nombre === d.cliente)).map(d => ({ v: d.cliente, t: d.cliente }))), pre.cliente, 'Elige cliente') + '<option value="__otro">Otro…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre de quien pagó" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<label class="campo"><span>Monto</span><input class="inp" inputmode="decimal" name="monto" placeholder="$" value="' + (pre.monto || '') + '"></label><div class="seg"><button type="button" class="on" data-m="transferencia" onclick="segOn(this)">Transferencia</button><button type="button" data-m="efectivo" onclick="segOn(this)">Efectivo</button></div>';
   if (tipo === 'pago') h = '<h3>🤝 Pago a proveedor</h3><label class="campo"><span>Proveedor</span><select class="inp" name="proveedor">' + opt(L().proveedores, pre.proveedor, 'Elige proveedor') + '</select></label><label class="campo"><span>Monto</span><input class="inp" inputmode="decimal" name="monto" placeholder="$" value="' + (pre.monto || '') + '"></label><div class="seg"><button type="button" class="on" data-m="transferencia" onclick="segOn(this)">Transferencia</button><button type="button" data-m="efectivo" onclick="segOn(this)">Efectivo</button></div>';
   if (tipo === 'merma') h = '<h3>🗑️ Fruta botada</h3><label class="campo"><span>Fruta</span><select class="inp" name="producto">' + prodOpts(pre.producto) + '</select></label><label class="campo"><span>Kilos</span><input class="inp" inputmode="decimal" name="kilos" placeholder="Ej: 1.5"></label><div class="seg"><button type="button" class="on" data-m="botado" onclick="segOn(this)">Se botó</button><button type="button" data-m="congelado" onclick="segOn(this)">A congelado</button><button type="button" data-m="mix" onclick="segOn(this)">Al mix</button></div>';
   h += '<button class="btn prim ancho" id="btnEnviarForm" onclick="enviarForm(\'' + tipo + '\')">Revisar</button>';
@@ -378,11 +415,11 @@ function segVal(f) { const b = f.querySelector('.seg button.on'); return b ? b.d
 async function enviarForm(tipo) {
   const f = $('frm'), E = f.elements; let I = null, err = '';
   const renglones = () => [...f.querySelectorAll('.renglon')].map(r => ({ producto: r.querySelector('[name=producto]').value, cantidad: numv(r.querySelector('[name=cantidad]').value), unidad: 'kg', precio_unitario: r.querySelector('[name=precio]') ? numv(r.querySelector('[name=precio]').value) : null })).filter(x => x.cantidad);
-  if (tipo === 'compra') { const prov = E.proveedor.value === '__otro' ? E.proveedor_otro.value.trim() : E.proveedor.value; const it = renglones(); if (!it.length) err = 'Pon los kilos'; else if (it.some(x => x.precio_unitario == null)) err = 'Pon el precio por kg'; I = { intencion: 'compra', proveedor: prov || null, items: it }; }
-  if (tipo === 'pedido') { const cli = E.cliente.value === '__otro' ? E.cliente_otro.value.trim() : E.cliente.value; const it = renglones(); if (!cli) err = 'Elige el cliente'; else if (!it.length) err = 'Pon los kilos'; I = { intencion: 'pedido', cliente: cli, fecha_entrega: E.fecha.value || null, items: it }; }
-  if (tipo === 'venta') { const m = segVal(f); const it = m === 'kg' ? { producto: E.producto.value, cantidad: numv(E.kilos.value), unidad: 'kg' } : { producto: E.producto.value, cantidad: numv(E.tarrinas.value), unidad: 'tarrina', presentacion: E.presentacion.value }; it.precio_unitario = numv(E.precio.value); if (!it.cantidad) err = 'Pon la cantidad'; I = { intencion: 'venta', cliente: E.cliente.value || null, items: [it] }; }
+  if (tipo === 'compra') { const prov = valorQuien(f, 'proveedor'); const it = renglones(); if (!it.length) err = 'Pon los kilos'; else if (it.some(x => x.precio_unitario == null)) err = 'Pon el precio por kg'; I = { intencion: 'compra', proveedor: prov || null, telefono: telQuien(f, 'proveedor'), items: it }; }
+  if (tipo === 'pedido') { const cli = valorQuien(f, 'cliente'); const it = renglones(); if (!cli) err = 'Elige el cliente'; else if (!it.length) err = 'Pon los kilos'; I = { intencion: 'pedido', cliente: cli, telefono: telQuien(f, 'cliente'), fecha_entrega: E.fecha.value || null, items: it }; }
+  if (tipo === 'venta') { const m = segVal(f); const it = m === 'kg' ? { producto: E.producto.value, cantidad: numv(E.kilos.value), unidad: 'kg' } : { producto: E.producto.value, cantidad: numv(E.tarrinas.value), unidad: 'tarrina', presentacion: E.presentacion.value }; it.precio_unitario = numv(E.precio.value); if (!it.cantidad) err = 'Pon la cantidad'; I = { intencion: 'venta', cliente: valorQuien(f, 'cliente') || null, telefono: telQuien(f, 'cliente'), items: [it] }; }
   if (tipo === 'entrega') { if (!E.pedido) return cerrarHoja(); I = { intencion: 'entrega', pedido_ref: E.pedido.value }; }
-  if (tipo === 'cobro') { if (!E.cliente.value) err = 'Elige quién pagó'; else if (!numv(E.monto.value)) err = 'Pon el monto'; I = { intencion: 'cobro', cliente: E.cliente.value, monto: numv(E.monto.value), medio: segVal(f) }; }
+  if (tipo === 'cobro') { if (!valorQuien(f, 'cliente')) err = 'Elige quién pagó'; else if (!numv(E.monto.value)) err = 'Pon el monto'; I = { intencion: 'cobro', cliente: valorQuien(f, 'cliente'), monto: numv(E.monto.value), medio: segVal(f) }; }
   if (tipo === 'pago') { if (!E.proveedor.value) err = 'Elige el proveedor'; else if (!numv(E.monto.value)) err = 'Pon el monto'; I = { intencion: 'pago_proveedor', proveedor: E.proveedor.value, monto: numv(E.monto.value), medio: segVal(f) }; }
   if (tipo === 'merma') { if (!numv(E.kilos.value)) err = 'Pon los kilos'; I = { intencion: 'merma', destino_merma: segVal(f), items: [{ producto: E.producto.value, cantidad: numv(E.kilos.value), unidad: 'kg' }] }; }
   if (err) return toast(err);
@@ -391,14 +428,109 @@ async function enviarForm(tipo) {
   catch (e) { toast(e.message); b.disabled = false; b.textContent = 'Revisar'; }
 }
 function entregar(id) { abrirForm('entrega', { pedido: id }); }
+// Documentos: las fotos se achican a 1600 px (JPEG) para subir rápido; los PDF van tal cual (máx. 8 MB).
+function leerArchivo(f) { return new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = mal; r.readAsDataURL(f); }); }
+async function achicarFoto(f) {
+  const url = await leerArchivo(f);
+  const img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = url; });
+  const max = 1600, k = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.85);
+}
+async function subirDocumento(f) {
+  if (!f) return;
+  const est = $('estadoDoc');
+  try {
+    if (f.type === 'application/pdf' && f.size > 8 * 1024 * 1024) return toast('El PDF es muy grande (máx. 8 MB)');
+    est.innerHTML = '⏳ Leyendo el documento… puede tardar unos segundos';
+    const dataUrl = f.type.startsWith('image/') ? await achicarFoto(f) : await leerArchivo(f);
+    const [cab, datos] = dataUrl.split(',');
+    const mime = cab.slice(5).split(';')[0];
+    const d = await api({ accion: 'documento', archivo: { mime, datos, nombre: f.name || 'documento' } });
+    mostrarConfirmacion(d);
+  } catch (e) { est.textContent = '⚠️ ' + e.message; }
+}
 function mostrarConfirmacion(d) {
   if (!d.botones || !d.botones.length) { abrirHoja('<h3>Fruti-Bot</h3><div class="resumen">' + fmt(d.texto) + '</div><button class="btn sec ancho" onclick="cerrarHoja()">Entendido</button>'); return; }
   abrirHoja('<h3>¿Está bien?</h3><div class="resumen">' + fmt(String(d.texto).replace(/\n\n¿Lo registro\?$/, '')) + '</div><div class="fila2"><button class="btn sec" onclick="responder(\'no\')">✏️ Corregir</button><button class="btn prim" id="btnSi" onclick="responder(\'si\')">✅ Sí, registrar</button></div>');
 }
 async function responder(id) {
   if (id === 'si') { const b = $('btnSi'); b.disabled = true; b.textContent = 'Registrando…'; }
-  try { const d = await api({ accion: 'mensaje', boton_id: id }); cerrarHoja(); if (id === 'si') { toast('✅ Registrado'); cargar(); } else toast('No se registró nada'); }
-  catch (e) { toast(e.message); }
+  try {
+    const d = await api({ accion: 'mensaje', boton_id: id });
+    if (id !== 'si') { cerrarHoja(); return toast('No se registró nada'); }
+    if (!/^✅/.test(String(d.texto || ''))) return mostrarConfirmacion(d);
+    abrirHoja('<h3>✅ Registrado</h3><div class="resumen">' + fmt(String(d.texto).replace(/^✅ Registrado\.\n/, '')) + '</div><div class="fila2"><button class="btn sec" onclick="cerrarHoja()">Listo</button><button class="btn prim" id="btnCompro" disabled>⏳ Comprobante…</button></div>');
+    await cargar();
+    const primera = String(d.texto).split('\n')[1] || '';
+    const m = ((TB && TB.actividad) || []).find(a => String(a.resumen).split('\n')[0] === primera.replace(/[*_]/g, ''));
+    const b = $('btnCompro');
+    if (b && m) { b.disabled = false; b.textContent = '🧾 Comprobante'; b.onclick = () => { cerrarHoja(); verComprobante(m.numero); }; }
+    else if (b) b.style.display = 'none';
+  } catch (e) { toast(e.message); }
+}
+
+/* ---------- Contactos del teléfono (Android/Chrome) ---------- */
+const hayContactos = 'contacts' in navigator && 'ContactsManager' in window;
+const btnContacto = campo => hayContactos ? '<button type="button" class="contacto" onclick="elegirContacto(\'' + campo + '\')">📇 Elegir de mis contactos</button><input type="hidden" name="' + campo + '_tel">' : '';
+async function elegirContacto(campo) {
+  try {
+    const [c] = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+    if (!c) return;
+    const nombre = String((c.name || [])[0] || '').trim(), tel = String((c.tel || [])[0] || '').replace(/[^\d+]/g, '');
+    if (!nombre) return toast('Ese contacto no tiene nombre');
+    const f = $('frm'), s = f.elements[campo], o = f.elements[campo + '_otro'];
+    const igual = [...s.options].find(op => op.value && op.value !== '__otro' && op.value.toLowerCase() === nombre.toLowerCase());
+    if (igual) { s.value = igual.value; if (o) o.style.display = 'none'; }
+    else { s.value = '__otro'; if (o) { o.style.display = 'block'; o.value = nombre; } }
+    if (f.elements[campo + '_tel']) f.elements[campo + '_tel'].value = tel;
+    toast('📇 ' + nombre);
+  } catch (e) { toast('No pude abrir los contactos'); }
+}
+function valorQuien(f, campo) { const s = f.elements[campo]; if (!s) return ''; return s.value === '__otro' ? (f.elements[campo + '_otro'].value || '').trim() : s.value; }
+function telQuien(f, campo) { const t = f.elements[campo + '_tel']; return t && t.value ? t.value : undefined; }
+
+/* ---------- Comprobantes ---------- */
+const TIPO_DOC = { compra: 'Comprobante de compra', pedido: 'Nota de pedido', entrega: 'Nota de entrega', venta: 'Nota de venta', cobro: 'Recibo de cobro', pago: 'Comprobante de pago', 'pago proveedor': 'Comprobante de pago', merma: 'Registro de fruta botada', deshacer: 'Anulación' };
+const ICONO_MOV = { compra: '🧾', pedido: '📝', entrega: '🚚', venta: '💰', cobro: '💵', pago: '🤝', 'pago proveedor': '🤝', merma: '🗑️' };
+const nComp = n => String(n).padStart(6, '0');
+function filasMovimientos(lista) {
+  return lista.map(a => '<div class="item" onclick="verComprobante(' + a.numero + ')" style="cursor:pointer"><div class="av">' + (ICONO_MOV[a.tipo] || '📄') + '</div><div><div class="t" style="font-size:14px;font-weight:600">' + esc(String(a.texto).replace(/^\S+\s/, '')) + '</div><div class="s">' + esc(a.usuario) + ' · ' + esc(String(a.fecha).slice(5, 16).replace('-', '/')) + ' · N° ' + nComp(a.numero) + '</div></div><div class="der" style="color:var(--berry);font-size:20px">🧾</div></div>').join('');
+}
+function verMovimientos() { abrirHoja('<h3>🧾 Comprobantes</h3><p style="color:var(--muted);font-size:13px;margin:-6px 0 10px">Toca uno para verlo, imprimirlo o guardarlo en PDF.</p><div class="card" style="box-shadow:none;padding:0">' + filasMovimientos((TB && TB.actividad) || []) + '</div>'); }
+function verComprobante(numero) {
+  const m = ((TB && TB.actividad) || []).find(a => a.numero === numero);
+  if (!m) return toast('No encontré ese comprobante');
+  const lineas = String(m.resumen).split('\n').map(s => s.trim()).filter(Boolean);
+  const titulo = lineas.shift().replace(/^\S+\s/, '');
+  const items = [], extra = []; let total = '';
+  lineas.forEach(l => {
+    const it = l.match(/^•\s*(.+?)\s×\s(\$[\d.,]+)\s=\s(\$[\d.,]+)(.*)$/);
+    if (it) { items.push({ desc: it[1], precio: it[2], sub: it[3], nota: it[4].replace(/⚠️/g, '').replace(/[()]/g, '').replace(/^\s*[—-]\s*/, '').trim() }); return; }
+    const t = l.match(/^Total:\s*(\$[\d.,]+)(.*)$/i);
+    if (t) { total = t[1]; return; }
+    if (/^⚠️ = precio general/.test(l)) return;
+    extra.push(l.replace(/^•\s*/, ''));
+  });
+  const fecha = String(m.fecha), f10 = fecha.slice(0, 10);
+  let h = '<div class="doc"><div class="cab"><img src="logo-128.png" alt=""><div class="marca">Frutimóvil<small>Frutos rojos · Quito</small></div><div class="num">N°<b>' + nComp(m.numero) + '</b></div></div>';
+  h += '<h4>' + esc(TIPO_DOC[m.tipo] || 'Comprobante') + '</h4><div class="meta"><b>' + esc(titulo) + '</b><br>Fecha: ' + esc(fechaLarga(f10)) + ' ' + f10.slice(0, 4) + ', ' + esc(fecha.slice(11, 16)) + '<br>Registrado por: ' + esc(m.usuario) + '</div>';
+  if (items.length) {
+    h += '<table><tr><th>Detalle</th><th class="d">P. unit.</th><th class="d">Subtotal</th></tr>';
+    items.forEach(i => { h += '<tr><td>' + esc(i.desc) + (i.nota ? '<div style="font-size:12px;color:#888">' + esc(i.nota) + '</div>' : '') + '</td><td class="d">' + esc(i.precio) + '</td><td class="d">' + esc(i.sub) + '</td></tr>'; });
+    h += '</table>';
+  }
+  if (extra.length) h += '<div class="extra">' + extra.map(esc).join('<br>') + '</div>';
+  if (total) h += '<div class="tot"><span>Total</span><span>' + esc(total) + '</span></div>';
+  h += '<div class="firmas"><div>Entregué</div><div>Recibí conforme</div></div><div class="pie">Comprobante interno de Frutimóvil · no reemplaza a la factura<br>Ref. ' + esc(m.op_id || '') + '</div></div>';
+  h += '<div class="compro-bts"><button class="btn sec" onclick="$(\'compro\').classList.remove(\'on\')">Cerrar</button>' + (navigator.share ? '<button class="btn sec" onclick="compartirComprobante(' + numero + ')">Compartir</button>' : '') + '<button class="btn prim" onclick="window.print()">🖨️ Imprimir / PDF</button></div>';
+  let c = $('compro'); if (!c) { c = document.createElement('div'); c.id = 'compro'; document.body.appendChild(c); }
+  c.innerHTML = h; c.classList.add('on'); c.scrollTop = 0;
+}
+async function compartirComprobante(numero) {
+  const m = ((TB && TB.actividad) || []).find(a => a.numero === numero); if (!m) return;
+  try { await navigator.share({ title: 'Frutimóvil · N° ' + nComp(numero), text: 'Frutimóvil · ' + (TIPO_DOC[m.tipo] || 'Comprobante') + ' N° ' + nComp(numero) + '\n' + m.fecha + ' · ' + m.usuario + '\n\n' + String(m.resumen).replace(/⚠️ = precio general.*$/m, '').replace(/ ⚠️/g, '').trim() }); } catch (e) {}
 }
 
 /* ---------- Chat ---------- */
