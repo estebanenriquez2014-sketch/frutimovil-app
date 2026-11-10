@@ -372,7 +372,7 @@ function pintar() {
 function abrirHoja(html) { $('hojaC').innerHTML = html; $('velo').classList.add('on'); $('hoja').classList.add('on'); }
 function cerrarHoja() { $('velo').classList.remove('on'); $('hoja').classList.remove('on'); }
 $('velo').onclick = cerrarHoja;
-$('fab').onclick = () => abrirHoja('<h3>¿Qué quieres registrar?</h3><div class="acciones">' + [['documento', '📷', 'Orden o factura'], ['compra', '🧾', 'Compra'], ['pedido', '📝', 'Pedido'], ['venta', '💰', 'Venta'], ['entrega', '🚚', 'Entrega'], ['cobro', '💵', 'Cobro'], ['pago', '🤝', 'Pago a proveedor'], ['merma', '🗑️', 'Fruta botada'], ['bot', '💬', 'Escribir al bot']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="e">' + a[1] + '</span>' + a[2] + '</button>').join('') + '</div>');
+$('fab').onclick = () => abrirHoja('<h3>¿Qué quieres registrar?</h3><div class="acciones">' + [/* ['documento', '📷', 'Orden o factura'] — se activa cuando el backend lea documentos */ ['compra', '🧾', 'Compra'], ['pedido', '📝', 'Pedido'], ['venta', '💰', 'Venta'], ['entrega', '🚚', 'Entrega'], ['cobro', '💵', 'Cobro'], ['pago', '🤝', 'Pago a proveedor'], ['merma', '🗑️', 'Fruta botada'], ['bot', '💬', 'Escribir al bot']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="e">' + a[1] + '</span>' + a[2] + '</button>').join('') + '</div>');
 
 const L = () => (TB && TB.listas) || { productos: [], clientes: [], proveedores: [], presentaciones: [] };
 const opt = (arr, val, vacio) => (vacio ? '<option value="">' + vacio + '</option>' : '') + arr.map(o => { const v = typeof o === 'string' ? o : o.v; const t = typeof o === 'string' ? o : o.t; return '<option value="' + esc(v) + '"' + (v === val ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('');
