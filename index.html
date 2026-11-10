@@ -295,6 +295,9 @@ textarea.inp{min-height:150px;resize:vertical;line-height:1.5;font-size:15px}
   .compro-bts{display:none!important}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+.chips-sede{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}.chips-sede:empty{display:none}
+.chip-sede{padding:9px 16px;border-radius:999px;background:var(--rosa);color:var(--acento);font-weight:700;font-size:14px;border:1.5px solid transparent}
+.chip-sede.on{background:var(--vino);color:#fff}
 </style>
 </head>
 <body>
@@ -591,7 +594,9 @@ const prodOpts = v => opt(L().productos.map(p => ({ v: p.codigo, t: (EMOJI[p.cod
 function renglon(tipo, d) {
   d = d || {};
   const precio = '<input class="inp" inputmode="decimal" name="precio" placeholder="' + (tipo === 'compra' ? '$ por kg' : 'Precio (opcional)') + '" value="' + (d.precio == null ? '' : d.precio) + '">';
-  return '<div class="renglon"><button type="button" class="x" onclick="this.parentNode.remove()">×</button><select class="inp" name="producto">' + prodOpts(d.producto) + '</select><div class="g"><input class="inp" inputmode="decimal" name="cantidad" placeholder="Kilos" value="' + (d.cantidad || '') + '">' + (precio || '<span></span>') + '</div></div>';
+  const libre = !!d.producto && !L().productos.some(p => p.codigo === d.producto);
+  const otro = tipo === 'pedido' ? '<option value="__otro"' + (libre ? ' selected' : '') + '>➕ Otro producto…</option>' : '';
+  return '<div class="renglon"><button type="button" class="x" onclick="this.parentNode.remove()">×</button><select class="inp" name="producto" onchange="otroProducto(this)">' + prodOpts(d.producto) + otro + '</select><input class="inp" name="producto_otro" placeholder="¿Qué producto? Ej: banano" value="' + (libre ? esc(d.producto) : '') + '" style="display:' + (libre ? 'block' : 'none') + ';margin-top:8px"><div class="g"><input class="inp" inputmode="decimal" name="cantidad" placeholder="Kilos" value="' + (d.cantidad || '') + '">' + (precio || '<span></span>') + '</div></div>';
 }
 const renglonesPre = (tipo, pre) => (pre.items && pre.items.length ? pre.items : [pre]).map(d => renglon(tipo, d)).join('');
 function abrirForm(tipo, pre) {
@@ -601,7 +606,7 @@ function abrirForm(tipo, pre) {
   const cl = L().clientes.map(c => ({ v: c.nombre, t: c.nombre + (c.tipo === 'MAYORISTA' ? ' · mayorista' : '') }));
   let h = '';
   if (tipo === 'compra') h = '<h3><span class="hi">' + ic('receipt') + '</span>Compra</h3><label class="campo"><span>Proveedor</span><select class="inp" name="proveedor">' + opt(L().proveedores, pre.proveedor, 'Elige proveedor') + '<option value="__otro">Otro…</option></select></label><input class="inp" name="proveedor_otro" placeholder="Nombre del proveedor" style="display:none;margin:-4px 0 12px">' + btnContacto('proveedor') + '<div id="renglones">' + renglonesPre('compra', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'compra\')">＋ Otra fruta</button>';
-  if (tipo === 'pedido') h = '<h3><span class="hi">' + ic('list') + '</span>Pedido</h3><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Elige cliente') + '<option value="__otro">Cliente nuevo…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<label class="campo"><span>Fecha de entrega</span><input class="inp" type="date" name="fecha" value="' + (pre.fecha || proximoMartes()) + '"></label><div id="renglones">' + renglonesPre('pedido', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'pedido\')">＋ Otra fruta</button>';
+  if (tipo === 'pedido') h = '<h3><span class="hi">' + ic('list') + '</span>Pedido</h3><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Elige cliente') + '<option value="__otro">Cliente nuevo…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<div class="campo" id="cajaSede" style="display:block;margin-bottom:12px"><span style="display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:0 0 6px 2px">Sede</span><div class="chips-sede"></div><input class="inp" name="sede" oninput="marcarSede()" autocomplete="off"></div><label class="campo"><span>Fecha de entrega</span><input class="inp" type="date" name="fecha" value="' + (pre.fecha || proximoMartes()) + '"></label><div id="renglones">' + renglonesPre('pedido', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'pedido\')">＋ Otro producto</button>';
   if (tipo === 'venta') h = '<h3><span class="hi">' + ic('cash') + '</span>Venta</h3><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Cliente final') + '<option value="__otro">Otro cliente…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<label class="campo"><span>Fruta</span><select class="inp" name="producto" onchange="presentaciones(this.value)">' + prodOpts(pre.producto) + '</select></label><div class="seg" id="segVenta"><button type="button" class="on" data-m="tarrina" onclick="modoVenta(this)">Tarrinas</button><button type="button" data-m="kg" onclick="modoVenta(this)">Por kilo</button></div><div id="ventaTarrina"><label class="campo"><span>Presentación</span><select class="inp" name="presentacion" id="selPres"></select></label><label class="campo"><span>¿Cuántas?</span><input class="inp" inputmode="numeric" name="tarrinas" placeholder="Ej: 3"></label></div><div id="ventaKg" style="display:none"><label class="campo"><span>Kilos</span><input class="inp" inputmode="decimal" name="kilos" placeholder="Ej: 2"></label></div><label class="campo"><span>Precio unitario (opcional)</span><input class="inp" inputmode="decimal" name="precio" placeholder="Si lo dejas vacío uso la lista de precios"></label>';
   if (tipo === 'entrega') { const ps = (TB && TB.pedidos) || []; h = '<h3><span class="hi">' + ic('truck') + '</span>Entrega</h3>' + (ps.length ? '<label class="campo"><span>¿Qué pedido entregaste?</span><select class="inp" name="pedido">' + opt(ps.map(p => ({ v: p.id, t: p.cliente + ' · ' + p.id + ' · ' + din(p.total) })), pre.pedido) + '</select></label>' : vacio('truck', 'No hay pedidos pendientes.')); }
   if (tipo === 'cobro') h = '<h3><span class="hi">' + ic('in') + '</span>Cobro</h3><label class="campo"><span>¿Quién pagó?</span><select class="inp" name="cliente">' + opt(cl.concat(((TB && TB.deudas) || []).filter(d => !L().clientes.some(c => c.nombre === d.cliente)).map(d => ({ v: d.cliente, t: d.cliente }))), pre.cliente, 'Elige cliente') + '<option value="__otro">Otro…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre de quien pagó" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<label class="campo"><span>Monto</span><input class="inp" inputmode="decimal" name="monto" placeholder="$" value="' + (pre.monto || '') + '"></label><div class="seg"><button type="button" class="on" data-m="transferencia" onclick="segOn(this)">Transferencia</button><button type="button" data-m="efectivo" onclick="segOn(this)">Efectivo</button></div>';
@@ -610,9 +615,24 @@ function abrirForm(tipo, pre) {
   h += '<button class="btn prim ancho" id="btnEnviarForm" onclick="enviarForm(\'' + tipo + '\')">Revisar</button>';
   abrirHoja('<form id="frm" onsubmit="return false">' + h + '</form>');
   const f = $('frm');
-  ['proveedor', 'cliente'].forEach(n => { const s = f.elements[n], o = f.elements[n + '_otro']; if (s && o) s.onchange = () => { o.style.display = s.value === '__otro' ? 'block' : 'none'; }; });
+  ['proveedor', 'cliente'].forEach(n => { const s = f.elements[n], o = f.elements[n + '_otro']; if (s && o) s.onchange = () => { o.style.display = s.value === '__otro' ? 'block' : 'none'; if (n === 'cliente') pintarSedes(); }; });
+  if (tipo === 'pedido') pintarSedes(pre.sede);
   if (tipo === 'venta') presentaciones(f.elements.producto.value);
 }
+function otroProducto(s) { const o = s.parentNode.querySelector('[name=producto_otro]'); if (!o) return; o.style.display = s.value === '__otro' ? 'block' : 'none'; if (s.value === '__otro') o.focus(); }
+// Sedes del cliente elegido (ej. Datu: Cumbayá, Quito). Se pueden tocar o escribir una nueva.
+function pintarSedes(pre) {
+  const f = $('frm'), caja = $('cajaSede'); if (!f || !caja) return;
+  const c = L().clientes.find(x => x.nombre === f.elements.cliente.value);
+  const sedes = (c && c.sedes) || [];
+  caja.dataset.obliga = sedes.length ? '1' : '';
+  caja.querySelector('.chips-sede').innerHTML = sedes.map(x => '<button type="button" class="chip-sede" onclick="elegirSede(this)">' + esc(x) + '</button>').join('');
+  f.elements.sede.value = pre || '';
+  f.elements.sede.placeholder = sedes.length ? 'Elige la sede o escribe otra' : 'Sede o local (opcional)';
+  marcarSede();
+}
+function elegirSede(b) { $('frm').elements.sede.value = b.textContent; marcarSede(); }
+function marcarSede() { const v = $('frm').elements.sede.value.trim().toLowerCase(); document.querySelectorAll('.chip-sede').forEach(b => b.classList.toggle('on', b.textContent.toLowerCase() === v)); }
 function agregarRenglon(tipo) { $('renglones').insertAdjacentHTML('beforeend', renglon(tipo)); }
 function segOn(b) { b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); }
 function modoVenta(b) { segOn(b); $('ventaTarrina').style.display = b.dataset.m === 'tarrina' ? 'block' : 'none'; $('ventaKg').style.display = b.dataset.m === 'kg' ? 'block' : 'none'; }
@@ -622,9 +642,9 @@ function segVal(f) { const b = f.querySelector('.seg button.on'); return b ? b.d
 
 async function enviarForm(tipo) {
   const f = $('frm'), E = f.elements; let I = null, err = '';
-  const renglones = () => [...f.querySelectorAll('.renglon')].map(r => ({ producto: r.querySelector('[name=producto]').value, cantidad: numv(r.querySelector('[name=cantidad]').value), unidad: 'kg', precio_unitario: r.querySelector('[name=precio]') ? numv(r.querySelector('[name=precio]').value) : null })).filter(x => x.cantidad);
+  const renglones = () => [...f.querySelectorAll('.renglon')].map(r => { const sel = r.querySelector('[name=producto]'), o = r.querySelector('[name=producto_otro]'); const libre = sel.value === '__otro'; return Object.assign({ producto: libre ? (o.value || '').trim() : sel.value }, libre ? { libre: true } : {}, { cantidad: numv(r.querySelector('[name=cantidad]').value), unidad: 'kg', precio_unitario: r.querySelector('[name=precio]') ? numv(r.querySelector('[name=precio]').value) : null }); }).filter(x => x.cantidad && x.producto);
   if (tipo === 'compra') { const prov = valorQuien(f, 'proveedor'); const it = renglones(); if (!it.length) err = 'Pon los kilos'; else if (it.some(x => x.precio_unitario == null)) err = 'Pon el precio por kg'; I = { intencion: 'compra', proveedor: prov || null, telefono: telQuien(f, 'proveedor'), items: it }; }
-  if (tipo === 'pedido') { const cli = valorQuien(f, 'cliente'); const it = renglones(); if (!cli) err = 'Elige el cliente'; else if (!it.length) err = 'Pon los kilos'; I = { intencion: 'pedido', cliente: cli, telefono: telQuien(f, 'cliente'), fecha_entrega: E.fecha.value || null, items: it }; }
+  if (tipo === 'pedido') { const cli = valorQuien(f, 'cliente'); const it = renglones(); const sede = E.sede.value.trim(); if (!cli) err = 'Elige el cliente'; else if ($('cajaSede').dataset.obliga && !sede) err = 'Elige la sede'; else if (!it.length) err = 'Pon el producto y los kilos'; I = { intencion: 'pedido', cliente: cli, sede: sede || undefined, telefono: telQuien(f, 'cliente'), fecha_entrega: E.fecha.value || null, items: it }; }
   if (tipo === 'venta') { const m = segVal(f); const it = m === 'kg' ? { producto: E.producto.value, cantidad: numv(E.kilos.value), unidad: 'kg' } : { producto: E.producto.value, cantidad: numv(E.tarrinas.value), unidad: 'tarrina', presentacion: E.presentacion.value }; it.precio_unitario = numv(E.precio.value); if (!it.cantidad) err = 'Pon la cantidad'; I = { intencion: 'venta', cliente: valorQuien(f, 'cliente') || null, telefono: telQuien(f, 'cliente'), items: [it] }; }
   if (tipo === 'entrega') { if (!E.pedido) return cerrarHoja(); I = { intencion: 'entrega', pedido_ref: E.pedido.value }; }
   if (tipo === 'cobro') { if (!valorQuien(f, 'cliente')) err = 'Elige quién pagó'; else if (!numv(E.monto.value)) err = 'Pon el monto'; I = { intencion: 'cobro', cliente: valorQuien(f, 'cliente'), monto: numv(E.monto.value), medio: segVal(f) }; }

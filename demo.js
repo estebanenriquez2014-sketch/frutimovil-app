@@ -40,7 +40,7 @@
     actividad,
     listas: {
       productos,
-      clientes: ['Hotel', 'HPG', 'Uko', 'Club', 'Datu Deli', 'Chorigol', 'Círculo Militar'].map(n => ({ nombre: n, tipo: 'MAYORISTA' })),
+      clientes: ['Hotel', 'HPG', 'Uko', 'Club', 'Datu Deli', 'Chorigol', 'Círculo Militar'].map(n => ({ nombre: n, tipo: 'MAYORISTA', sedes: n === 'Datu Deli' ? ['Cumbayá', 'Quito'] : n === 'Uko' ? ['República', 'Irlanda'] : [] })),
       proveedores: ['Fabricio', 'Lidia', 'Dario', 'Lili', 'Mercado'],
       presentaciones: [{ codigo: 'FRE-GR', presentacion: '500 g' }, { codigo: 'FRE-GR', presentacion: '1 kg' }, { codigo: 'FRA-PR', presentacion: '250 g' }, { codigo: 'ARA-01', presentacion: '125 g' }],
     },
