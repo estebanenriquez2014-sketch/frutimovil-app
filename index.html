@@ -298,6 +298,15 @@ textarea.inp{min-height:150px;resize:vertical;line-height:1.5;font-size:15px}
 .chips-sede{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}.chips-sede:empty{display:none}
 .chip-sede{padding:9px 16px;border-radius:999px;background:var(--rosa);color:var(--acento);font-weight:700;font-size:14px;border:1.5px solid transparent}
 .chip-sede.on{background:var(--vino);color:#fff}
+.segPed{display:grid;grid-template-columns:1fr 1fr;gap:6px}.segPed button{display:flex;align-items:center;justify-content:center;gap:6px}
+.mini2{margin-top:8px}.mini2 .btn{padding:10px 8px;font-size:13.5px}
+.prep ul{list-style:none;padding:0;margin:10px 0 0}.prep li{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-top:1px solid var(--linea);font-size:14.5px}
+.prep li em{font-style:normal;margin-left:8px;background:var(--rosa);color:var(--acento);border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:800}
+.prep .tot{font-size:20px;font-weight:800;color:var(--berry)}
+.grandes{display:grid;gap:10px}.grandes button{display:flex;align-items:center;gap:14px;text-align:left;background:var(--card);border-radius:18px;padding:14px 16px;box-shadow:var(--sombra)}
+.grandes b{display:block;font-size:16px}.grandes span{font-size:12.5px;color:var(--muted)}
+.aviso-venta{background:var(--ambarBg);color:var(--txt);border-radius:16px;padding:14px;margin:0 0 14px;display:grid;gap:8px;font-size:14px}
+.anular-box{max-width:560px;margin:14px auto 0;display:grid;gap:8px}.rojo-txt{color:#C62828!important}
 </style>
 </head>
 <body>
@@ -544,22 +553,68 @@ function verProducto(cod) {
   const cab = FOTO[cod] ? '<div class="fotoG" style="background-image:url(fotos/' + FOTO[cod] + '.jpg)"><div><b>' + esc(s.nombre) + '</b><span>' + kg(s.kg, s.unidad) + '</span></div></div>' : '<h3>' + esc(s.nombre) + ' · ' + kg(s.kg, s.unidad) + '</h3>';
   abrirHoja(cab + '<div class="datos"><div><span>Estado</span>' + chipEstado(s) + '</div><div><span>Lotes en la refri</span><b>' + s.lotes + '</b></div><div><span>Lo más viejo</span><b>' + (s.kg > 0 ? (s.diasViejo === 0 ? 'De hoy' : 'Hace ' + s.diasViejo + ' día' + (s.diasViejo > 1 ? 's' : '')) : '—') + '</b></div><div><span>Vence</span><b>' + (s.vence ? fechaLarga(String(s.vence)) : '—') + '</b></div><div><span>Piden los clientes</span><b>' + kg(s.piden, s.unidad) + '</b></div><div><span>Falta comprar</span><b class="' + (s.comprar > 0 ? 'berry' : 'verde') + '">' + (s.comprar > 0 ? kg(s.comprar, s.unidad) : 'Nada') + '</b></div></div><div class="fila2"><button class="btn sec" onclick="abrirForm(\'merma\',{producto:\'' + cod + '\'})">' + ic('trash') + 'Fruta botada</button><button class="btn prim" onclick="abrirForm(\'compra\',{producto:\'' + cod + '\'})">' + ic('receipt') + 'Compré más</button></div>');
 }
-let filtroPed = 'todos';
+let filtroPed = 'todos', modoPed = 'lista', diaPrep = '';
+const segPed = () => '<div class="seg segPed"><button type="button" class="' + (modoPed === 'lista' ? 'on' : '') + '" onclick="modoPed=\'lista\';pintarPedidos()">' + ic('list') + 'Pedidos</button><button type="button" class="' + (modoPed === 'preparar' ? 'on' : '') + '" onclick="modoPed=\'preparar\';pintarPedidos()">' + ic('box') + 'Preparar</button></div>';
+// Cuántos gramos tiene cada tarrina de un renglón: primero lo que dice el pedido ("10 × 250 g"), si no el empaque del cliente.
+function empaqueDe(p, i) {
+  const m = String(i.nota || '').match(/(\d+)\s*×\s*(\d+(?:[.,]\d+)?)\s*(kg|g)/i);
+  if (m) return { n: +m[1], g: m[3].toLowerCase() === 'kg' ? parseFloat(m[2].replace(',', '.')) * 1000 : +m[2] };
+  const c = L().clientes.find(x => x.nombre === (p.clienteBase || p.cliente));
+  const e = c && c.empaque && c.empaque[i.codigo];
+  const g = e ? (/kg/i.test(e) ? parseFloat(e) * 1000 : parseFloat(e)) : 0;
+  if (!g) return null;
+  const kgs = i.unidad === 'kg' ? i.cantidad : 0;
+  return kgs ? { n: Math.round(kgs * 1000 / g * 10) / 10, g } : null;
+}
+function pintarPreparar() {
+  const P = TB.pedidos, dias = [...new Set(P.map(p => p.entrega))].sort();
+  if (!dias.includes(diaPrep)) diaPrep = dias.find(d => d >= hoyISO()) || dias[0];
+  let h = segPed() + '<p class="ay" style="margin:12px 2px">Lo que tienes que llevar, fruta por fruta, con cuántas tarrinas va a cada cliente.</p>';
+  h += '<div class="filtros">' + dias.map(d => '<button class="' + (d === diaPrep ? 'on' : '') + '" onclick="diaPrep=\'' + d + '\';pintarPedidos()">' + fechaLarga(d).replace(/ de .*/, '') + '<b>' + P.filter(p => p.entrega === d).length + '</b></button>').join('') + '</div>';
+  const porProd = {};
+  P.filter(p => p.entrega === diaPrep).forEach(p => p.items.forEach(i => {
+    const k = i.codigo === 'OTRO' ? 'OTRO:' + i.producto : i.codigo;
+    const g = porProd[k] = porProd[k] || { codigo: i.codigo, nombre: i.producto, kg: 0, filas: [] };
+    const kgs = i.unidad === 'kg' ? i.cantidad : i.cantidad * (parseFloat(i.presentacion) || 1000) / (/kg/i.test(i.presentacion) ? 1 : 1000);
+    g.kg += kgs;
+    const emp = i.unidad === 'kg' ? empaqueDe(p, i) : { n: i.cantidad, g: parseFloat(i.presentacion) || 0 };
+    const ya = g.filas.find(f => f.quien === p.cliente && f.g === (emp && emp.g));
+    if (ya && emp) { ya.kg += kgs; ya.n += emp.n; } else g.filas.push({ quien: p.cliente, kg: kgs, n: emp ? emp.n : 0, g: emp ? emp.g : 0 });
+  }));
+  const orden = ['FRA-PR', 'FRA-MD', 'ARA-01', 'FRE-GR', 'FRE-DP', 'MOR-01', 'MIX-20'];
+  const lista = Object.values(porProd).sort((a, b) => ((orden.indexOf(a.codigo) + 1) || 99) - ((orden.indexOf(b.codigo) + 1) || 99));
+  if (!lista.length) h += vacio('box', 'No hay nada que preparar para ese día.');
+  lista.forEach(g => {
+    const st = (TB.stock || []).find(x => x.codigo === g.codigo);
+    h += '<div class="card prep"><div class="cab">' + avProd(g.codigo) + '<div><div class="t">' + esc(g.nombre) + '</div><div class="s">' + (st ? 'En la refri: ' + kg(st.kg) : 'Hay que conseguirlo') + '</div></div><div class="tot">' + kg(Math.round(g.kg * 1000) / 1000) + '</div></div><ul>';
+    g.filas.forEach(f => { h += '<li><span>' + esc(f.quien) + '</span><b>' + kg(Math.round(f.kg * 1000) / 1000) + (f.g ? ' <em>' + (Number.isInteger(f.n) ? f.n : '≈' + Math.ceil(f.n)) + ' × ' + (f.g >= 1000 ? f.g / 1000 + ' kg' : f.g + ' g') + '</em>' : '') + '</b></li>'; });
+    h += '</ul></div>';
+  });
+  $('v-pedidos').innerHTML = h;
+}
+function editarPedido(id) {
+  const p = TB.pedidos.find(x => x.id === id); if (!p) return;
+  abrirForm('pedido', { editar: id, cliente: p.clienteBase || p.cliente, sede: p.sede, fecha: p.entrega, items: p.items.map(i => ({ producto: i.codigo === 'OTRO' ? i.producto : i.codigo, cantidad: i.cantidad, precio: i.precio })) });
+}
+async function cancelarPedido(id) {
+  try { mostrarConfirmacion(await api({ accion: 'mensaje', interpretacion: { intencion: 'cancelar_pedido', pedido_ref: id } })); } catch (e) { toast(e.message); }
+}
 function pintarPedidos() {
+  if (modoPed === 'preparar' && TB.pedidos.length) return pintarPreparar();
   const hoy = hoyISO(), P = TB.pedidos;
   const grupos = { todos: P, hoy: P.filter(p => p.entrega === hoy), atrasados: P.filter(p => p.entrega < hoy), proximos: P.filter(p => p.entrega > hoy) };
   if (!grupos[filtroPed].length) filtroPed = 'todos';
   let h = '';
   if (!P.length) { $('v-pedidos').innerHTML = vacio('list', 'No hay pedidos pendientes.<br>Toca ＋ para anotar uno o escanea la orden de compra.'); return; }
   const total = P.reduce((a, p) => a + p.total, 0);
-  h += '<div class="stats3" style="grid-template-columns:1fr 1fr"><div><b>' + P.length + '</b><span>Pedidos por entregar</span></div><div><b>' + din(total) + '</b><span>Por facturar</span></div></div>';
+  h += segPed() + '<div class="stats3" style="grid-template-columns:1fr 1fr;margin-top:12px"><div><b>' + P.length + '</b><span>Pedidos por entregar</span></div><div><b>' + din(total) + '</b><span>Por facturar</span></div></div>';
   h += '<div class="filtros" style="margin-top:14px">' + [['todos', 'Todos'], ['hoy', 'Hoy'], ['atrasados', 'Atrasados'], ['proximos', 'Próximos']].filter(f => f[0] === 'todos' || grupos[f[0]].length).map(f => '<button class="' + (filtroPed === f[0] ? 'on' : '') + '" onclick="filtroPed=\'' + f[0] + '\';pintarPedidos()">' + f[1] + '<b>' + grupos[f[0]].length + '</b></button>').join('') + '</div>';
   let dia = '';
   grupos[filtroPed].forEach(p => {
     if (p.entrega !== dia) { dia = p.entrega; h += '<div class="dia">' + fechaLarga(p.entrega) + (p.entrega < hoy ? '<small class="chip c-rojo">Atrasado</small>' : p.entrega === hoy ? '<small class="chip c-verde">Hoy</small>' : '') + '</div>'; }
     h += '<div class="card ped"><div class="cab">' + avNombre(p.cliente) + '<div><div class="t">' + esc(p.cliente) + '</div><div class="s">' + esc(p.id) + ' · ' + (p.tipo === 'MAYORISTA' ? 'Mayorista' : 'Cliente final') + '</div></div><div class="tot">' + din(p.total) + '</div></div><ul>';
     p.items.forEach(i => { h += '<li><span>' + esc(i.producto) + '</span><b>' + (i.unidad === 'kg' ? kg(i.cantidad) : i.cantidad + ' × ' + esc(i.presentacion)) + '</b></li>'; });
-    h += '</ul><button class="btn prim" onclick="entregar(\'' + js(p.id) + '\')">' + ic('check') + 'Marcar entregado</button></div>';
+    h += '</ul><button class="btn prim" onclick="entregar(\'' + js(p.id) + '\')">' + ic('check') + 'Marcar entregado</button><div class="fila2 mini2"><button class="btn sec" onclick="editarPedido(\'' + js(p.id) + '\')">' + ic('pencil') + 'Corregir</button><button class="btn sec" onclick="cancelarPedido(\'' + js(p.id) + '\')">' + ic('x') + 'Cancelar</button></div></div>';
   });
   $('v-pedidos').innerHTML = h;
 }
@@ -567,7 +622,7 @@ function pintarCobros() {
   const N = TB.numeros;
   let h = '<div class="hero" style="padding-bottom:20px"><div class="h-top"><span>Te deben en total</span>' + (TB.deudas.length ? '<span class="pill">' + TB.deudas.length + ' cliente' + (TB.deudas.length > 1 ? 's' : '') + '</span>' : '') + '</div><div class="h-num">' + din(N.teDeben) + '</div><div class="h-sub"><span>Debes a proveedores <b>' + din(N.debes) + '</b></span></div></div>';
   h += '<div class="secc"><h2>Clientes con saldo</h2><button class="link" onclick="abrirForm(\'cobro\')">Registrar cobro' + ic('chev') + '</button></div>';
-  if (TB.deudas.length) { h += '<div class="card">'; TB.deudas.forEach(d => { h += '<div class="fila">' + avNombre(d.cliente) + '<div class="cu"><div class="t">' + esc(d.cliente) + '</div><div class="s">' + d.ventas + ' venta' + (d.ventas > 1 ? 's' : '') + ' · ' + (d.dias === 0 ? 'desde hoy' : 'hace ' + d.dias + ' día' + (d.dias > 1 ? 's' : '')) + '</div></div><div class="der"><div class="num ' + (d.dias >= 8 ? 'rojo' : '') + '">' + din(d.debe) + '</div><button class="chip c-vino liso" style="margin-top:5px" onclick="abrirForm(\'cobro\',{cliente:\'' + js(d.cliente) + '\',monto:' + d.debe + '})">Cobrar</button></div></div>'; }); h += '</div>'; }
+  if (TB.deudas.length) { h += '<div class="card">'; TB.deudas.forEach(d => { h += '<div class="fila">' + avNombre(d.cliente) + '<div class="cu"><div class="t">' + esc(d.cliente) + '</div><div class="s">' + d.ventas + ' venta' + (d.ventas > 1 ? 's' : '') + ' · ' + (d.dias === 0 ? 'desde hoy' : 'hace ' + d.dias + ' día' + (d.dias > 1 ? 's' : '')) + (d.atrasado ? ' · <b class="rojo">atrasado (paga a ' + d.plazo + ' días)</b>' : d.plazo ? ' · paga a ' + d.plazo + ' días' : '') + '</div></div><div class="der"><div class="num ' + (d.atrasado || (!d.plazo && d.dias >= 8) ? 'rojo' : '') + '">' + din(d.debe) + '</div><button class="chip c-vino liso" style="margin-top:5px" onclick="abrirForm(\'cobro\',{cliente:\'' + js(d.cliente) + '\',monto:' + d.debe + '})">Cobrar</button></div></div>'; }); h += '</div>'; }
   else h += vacio('check', 'Nadie te debe');
   h += '<div class="secc"><h2>Lo que debes</h2><button class="link" onclick="abrirForm(\'pago\')">Registrar pago' + ic('chev') + '</button></div>';
   if (TB.debesA.length) { h += '<div class="card">'; TB.debesA.forEach(d => { h += '<div class="fila">' + avNombre(d.proveedor) + '<div class="cu"><div class="t">' + esc(d.proveedor) + '</div><div class="s">Proveedor</div></div><div class="der"><div class="num">' + din(d.debe) + '</div><button class="chip c-vino liso" style="margin-top:5px" onclick="abrirForm(\'pago\',{proveedor:\'' + js(d.proveedor) + '\',monto:' + d.debe + '})">Pagar</button></div></div>'; }); h += '</div>'; }
@@ -586,7 +641,7 @@ async function enviarProv() { const t = $('txtProv').value; if (navigator.share)
 function abrirHoja(html) { $('hojaC').innerHTML = html; $('velo').classList.add('on'); $('hoja').classList.add('on'); $('hoja').scrollTop = 0; }
 function cerrarHoja() { $('velo').classList.remove('on'); $('hoja').classList.remove('on'); }
 $('velo').onclick = cerrarHoja;
-$('fab').onclick = () => abrirHoja('<h3>Registrar</h3><button class="dest-doc" onclick="abrirForm(\'documento\')"><span class="qi">' + ic('scan') + '</span><div><b>Escanear documento</b><span>Orden de compra o factura</span></div><span class="ia">' + ic('spark') + 'IA</span></button><div class="acciones">' + [['pedido', 'list', 'Pedido'], ['venta', 'cash', 'Venta'], ['compra', 'receipt', 'Compra'], ['entrega', 'truck', 'Entrega'], ['cobro', 'in', 'Cobro'], ['pago', 'out', 'Pago a proveedor'], ['merma', 'trash', 'Fruta botada'], ['bot', 'chat', 'Escribir al bot']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="qi">' + ic(a[1]) + '</span>' + a[2] + '</button>').join('') + '</div>');
+$('fab').onclick = () => abrirHoja('<h3>¿Qué pasó?</h3><div class="grandes">' + [['pedido', 'list', 'Me hicieron un pedido', 'Para entregar otro día'], ['entrega', 'truck', 'Entregué un pedido', 'Ya lo dejé en el cliente'], ['compra', 'receipt', 'Compré fruta', 'A un proveedor'], ['cobro', 'in', 'Me pagaron', 'Un cliente me pagó']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="qi">' + ic(a[1]) + '</span><div><b>' + a[2] + '</b><span>' + a[3] + '</span></div></button>').join('') + '</div><button class="dest-doc" onclick="abrirForm(\'documento\')"><span class="qi">' + ic('scan') + '</span><div><b>Tengo una foto</b><span>Orden de un cliente o nota del proveedor (WhatsApp)</span></div><span class="ia">' + ic('spark') + 'IA</span></button><div class="secc" style="margin:18px 2px 8px"><h2 style="font-size:14px">Otras cosas</h2></div><div class="acciones">' + [['venta', 'cash', 'Venta sin pedido'], ['pago', 'out', 'Pagué a proveedor'], ['merma', 'trash', 'Fruta botada'], ['bot', 'chat', 'Escribir al bot']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="qi">' + ic(a[1]) + '</span>' + a[2] + '</button>').join('') + '</div>');
 
 const L = () => (TB && TB.listas) || { productos: [], clientes: [], proveedores: [], presentaciones: [] };
 const opt = (arr, val, vacio) => (vacio ? '<option value="">' + vacio + '</option>' : '') + arr.map(o => { const v = typeof o === 'string' ? o : o.v; const t = typeof o === 'string' ? o : o.t; return '<option value="' + esc(v) + '"' + (v === val ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('');
@@ -606,8 +661,8 @@ function abrirForm(tipo, pre) {
   const cl = L().clientes.map(c => ({ v: c.nombre, t: c.nombre + (c.tipo === 'MAYORISTA' ? ' · mayorista' : '') }));
   let h = '';
   if (tipo === 'compra') h = '<h3><span class="hi">' + ic('receipt') + '</span>Compra</h3><label class="campo"><span>Proveedor</span><select class="inp" name="proveedor">' + opt(L().proveedores, pre.proveedor, 'Elige proveedor') + '<option value="__otro">Otro…</option></select></label><input class="inp" name="proveedor_otro" placeholder="Nombre del proveedor" style="display:none;margin:-4px 0 12px">' + btnContacto('proveedor') + '<div id="renglones">' + renglonesPre('compra', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'compra\')">＋ Otra fruta</button>';
-  if (tipo === 'pedido') h = '<h3><span class="hi">' + ic('list') + '</span>Pedido</h3><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Elige cliente') + '<option value="__otro">Cliente nuevo…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<div class="campo" id="cajaSede" style="display:block;margin-bottom:12px"><span style="display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:0 0 6px 2px">Sede</span><div class="chips-sede"></div><input class="inp" name="sede" oninput="marcarSede()" autocomplete="off"></div><label class="campo"><span>Fecha de entrega</span><input class="inp" type="date" name="fecha" value="' + (pre.fecha || proximoMartes()) + '"></label><div id="renglones">' + renglonesPre('pedido', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'pedido\')">＋ Otro producto</button>';
-  if (tipo === 'venta') h = '<h3><span class="hi">' + ic('cash') + '</span>Venta</h3><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Cliente final') + '<option value="__otro">Otro cliente…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<label class="campo"><span>Fruta</span><select class="inp" name="producto" onchange="presentaciones(this.value)">' + prodOpts(pre.producto) + '</select></label><div class="seg" id="segVenta"><button type="button" class="on" data-m="tarrina" onclick="modoVenta(this)">Tarrinas</button><button type="button" data-m="kg" onclick="modoVenta(this)">Por kilo</button></div><div id="ventaTarrina"><label class="campo"><span>Presentación</span><select class="inp" name="presentacion" id="selPres"></select></label><label class="campo"><span>¿Cuántas?</span><input class="inp" inputmode="numeric" name="tarrinas" placeholder="Ej: 3"></label></div><div id="ventaKg" style="display:none"><label class="campo"><span>Kilos</span><input class="inp" inputmode="decimal" name="kilos" placeholder="Ej: 2"></label></div><label class="campo"><span>Precio unitario (opcional)</span><input class="inp" inputmode="decimal" name="precio" placeholder="Si lo dejas vacío uso la lista de precios"></label>';
+  if (tipo === 'pedido') h = '<h3><span class="hi">' + ic(pre.editar ? 'pencil' : 'list') + '</span>' + (pre.editar ? 'Corregir pedido ' + esc(pre.editar) : 'Pedido') + '</h3>' + (pre.editar ? '<input type="hidden" name="editar" value="' + esc(pre.editar) + '"><p class="ay">Cambia lo que haga falta y toca Revisar. El pedido anterior queda reemplazado.</p>' : '<p class="ay">Para entregar otro día. Si ya lo entregaste ahora, usa «Entregué».</p>') + '<label class="campo"><span>Cliente</span><select class="inp" name="cliente"' + (pre.editar ? ' disabled' : '') + '>' + opt(cl, pre.cliente, 'Elige cliente') + '<option value="__otro">Cliente nuevo…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<div class="campo" id="cajaSede" style="display:block;margin-bottom:12px"><span style="display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:0 0 6px 2px">Sede</span><div class="chips-sede"></div><input class="inp" name="sede" oninput="marcarSede()" autocomplete="off"></div><label class="campo"><span>Fecha de entrega</span><input class="inp" type="date" name="fecha" value="' + (pre.fecha || proximoMartes()) + '"></label><div id="renglones">' + renglonesPre('pedido', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'pedido\')">＋ Otro producto</button>';
+  if (tipo === 'venta') h = '<h3><span class="hi">' + ic('cash') + '</span>Venta</h3><p class="ay">Solo para lo que vendiste y entregaste ahora, sin pedido. Si es para otro día, usa «Pedido».</p><div id="avisoVenta"></div><label class="campo"><span>Cliente</span><select class="inp" name="cliente">' + opt(cl, pre.cliente, 'Cliente final') + '<option value="__otro">Otro cliente…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre del cliente" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<label class="campo"><span>Fruta</span><select class="inp" name="producto" onchange="presentaciones(this.value)">' + prodOpts(pre.producto) + '</select></label><div class="seg" id="segVenta"><button type="button" class="on" data-m="tarrina" onclick="modoVenta(this)">Tarrinas</button><button type="button" data-m="kg" onclick="modoVenta(this)">Por kilo</button></div><div id="ventaTarrina"><label class="campo"><span>Presentación</span><select class="inp" name="presentacion" id="selPres"></select></label><label class="campo"><span>¿Cuántas?</span><input class="inp" inputmode="numeric" name="tarrinas" placeholder="Ej: 3"></label></div><div id="ventaKg" style="display:none"><label class="campo"><span>Kilos</span><input class="inp" inputmode="decimal" name="kilos" placeholder="Ej: 2"></label></div><label class="campo"><span>Precio unitario (opcional)</span><input class="inp" inputmode="decimal" name="precio" placeholder="Si lo dejas vacío uso la lista de precios"></label>';
   if (tipo === 'entrega') { const ps = (TB && TB.pedidos) || []; h = '<h3><span class="hi">' + ic('truck') + '</span>Entrega</h3>' + (ps.length ? '<label class="campo"><span>¿Qué pedido entregaste?</span><select class="inp" name="pedido">' + opt(ps.map(p => ({ v: p.id, t: p.cliente + ' · ' + p.id + ' · ' + din(p.total) })), pre.pedido) + '</select></label>' : vacio('truck', 'No hay pedidos pendientes.')); }
   if (tipo === 'cobro') h = '<h3><span class="hi">' + ic('in') + '</span>Cobro</h3><label class="campo"><span>¿Quién pagó?</span><select class="inp" name="cliente">' + opt(cl.concat(((TB && TB.deudas) || []).filter(d => !L().clientes.some(c => c.nombre === d.cliente)).map(d => ({ v: d.cliente, t: d.cliente }))), pre.cliente, 'Elige cliente') + '<option value="__otro">Otro…</option></select></label><input class="inp" name="cliente_otro" placeholder="Nombre de quien pagó" style="display:none;margin:-4px 0 12px">' + btnContacto('cliente') + '<label class="campo"><span>Monto</span><input class="inp" inputmode="decimal" name="monto" placeholder="$" value="' + (pre.monto || '') + '"></label><div class="seg"><button type="button" class="on" data-m="transferencia" onclick="segOn(this)">Transferencia</button><button type="button" data-m="efectivo" onclick="segOn(this)">Efectivo</button></div>';
   if (tipo === 'pago') h = '<h3><span class="hi">' + ic('out') + '</span>Pago a proveedor</h3><label class="campo"><span>Proveedor</span><select class="inp" name="proveedor">' + opt(L().proveedores, pre.proveedor, 'Elige proveedor') + '</select></label><label class="campo"><span>Monto</span><input class="inp" inputmode="decimal" name="monto" placeholder="$" value="' + (pre.monto || '') + '"></label><div class="seg"><button type="button" class="on" data-m="transferencia" onclick="segOn(this)">Transferencia</button><button type="button" data-m="efectivo" onclick="segOn(this)">Efectivo</button></div>';
@@ -615,9 +670,16 @@ function abrirForm(tipo, pre) {
   h += '<button class="btn prim ancho" id="btnEnviarForm" onclick="enviarForm(\'' + tipo + '\')">Revisar</button>';
   abrirHoja('<form id="frm" onsubmit="return false">' + h + '</form>');
   const f = $('frm');
-  ['proveedor', 'cliente'].forEach(n => { const s = f.elements[n], o = f.elements[n + '_otro']; if (s && o) s.onchange = () => { o.style.display = s.value === '__otro' ? 'block' : 'none'; if (n === 'cliente') pintarSedes(); }; });
+  ['proveedor', 'cliente'].forEach(n => { const s = f.elements[n], o = f.elements[n + '_otro']; if (s && o) s.onchange = () => { o.style.display = s.value === '__otro' ? 'block' : 'none'; if (n === 'cliente') { pintarSedes(); avisoVenta(); } }; });
+  if (tipo === 'venta') avisoVenta();
   if (tipo === 'pedido') pintarSedes(pre.sede);
   if (tipo === 'venta') presentaciones(f.elements.producto.value);
+}
+function avisoVenta() {
+  const f = $('frm'); if (!f || !$('avisoVenta')) return;
+  const cli = f.elements.cliente.value;
+  const ps = (TB.pedidos || []).filter(p => (p.clienteBase || p.cliente) === cli);
+  $('avisoVenta').innerHTML = ps.length ? '<div class="aviso-venta"><b>' + esc(cli) + ' tiene ' + (ps.length > 1 ? ps.length + ' pedidos pendientes' : 'un pedido pendiente') + '.</b> ¿Lo estás entregando?' + ps.map(p => '<button type="button" class="btn prim" onclick="entregar(\'' + js(p.id) + '\')">' + ic('truck') + 'Entregué ' + esc(p.id) + (p.sede ? ' · ' + esc(p.sede) : '') + '</button>').join('') + '<button type="button" class="btn sec" onclick="abrirForm(\'pedido\',{cliente:\'' + js(cli) + '\'})">' + ic('list') + 'No, es un pedido nuevo para otro día</button></div>' : '';
 }
 function otroProducto(s) { const o = s.parentNode.querySelector('[name=producto_otro]'); if (!o) return; o.style.display = s.value === '__otro' ? 'block' : 'none'; if (s.value === '__otro') o.focus(); }
 // Sedes del cliente elegido (ej. Datu: Cumbayá, Quito). Se pueden tocar o escribir una nueva.
@@ -644,7 +706,7 @@ async function enviarForm(tipo) {
   const f = $('frm'), E = f.elements; let I = null, err = '';
   const renglones = () => [...f.querySelectorAll('.renglon')].map(r => { const sel = r.querySelector('[name=producto]'), o = r.querySelector('[name=producto_otro]'); const libre = sel.value === '__otro'; return Object.assign({ producto: libre ? (o.value || '').trim() : sel.value }, libre ? { libre: true } : {}, { cantidad: numv(r.querySelector('[name=cantidad]').value), unidad: 'kg', precio_unitario: r.querySelector('[name=precio]') ? numv(r.querySelector('[name=precio]').value) : null }); }).filter(x => x.cantidad && x.producto);
   if (tipo === 'compra') { const prov = valorQuien(f, 'proveedor'); const it = renglones(); if (!it.length) err = 'Pon los kilos'; else if (it.some(x => x.precio_unitario == null)) err = 'Pon el precio por kg'; I = { intencion: 'compra', proveedor: prov || null, telefono: telQuien(f, 'proveedor'), items: it }; }
-  if (tipo === 'pedido') { const cli = valorQuien(f, 'cliente'); const it = renglones(); const sede = E.sede.value.trim(); if (!cli) err = 'Elige el cliente'; else if ($('cajaSede').dataset.obliga && !sede) err = 'Elige la sede'; else if (!it.length) err = 'Pon el producto y los kilos'; I = { intencion: 'pedido', cliente: cli, sede: sede || undefined, telefono: telQuien(f, 'cliente'), fecha_entrega: E.fecha.value || null, items: it }; }
+  if (tipo === 'pedido') { const cli = valorQuien(f, 'cliente'); const it = renglones(); const sede = E.sede.value.trim(); if (!cli) err = 'Elige el cliente'; else if ($('cajaSede').dataset.obliga && !sede) err = 'Elige la sede'; else if (!it.length) err = 'Pon el producto y los kilos'; I = E.editar ? { intencion: 'editar_pedido', pedido_ref: E.editar.value, sede: sede || '' } : { intencion: 'pedido', cliente: cli, sede: sede || undefined }; Object.assign(I, { telefono: telQuien(f, 'cliente'), fecha_entrega: E.fecha.value || null, items: it }); }
   if (tipo === 'venta') { const m = segVal(f); const it = m === 'kg' ? { producto: E.producto.value, cantidad: numv(E.kilos.value), unidad: 'kg' } : { producto: E.producto.value, cantidad: numv(E.tarrinas.value), unidad: 'tarrina', presentacion: E.presentacion.value }; it.precio_unitario = numv(E.precio.value); if (!it.cantidad) err = 'Pon la cantidad'; I = { intencion: 'venta', cliente: valorQuien(f, 'cliente') || null, telefono: telQuien(f, 'cliente'), items: [it] }; }
   if (tipo === 'entrega') { if (!E.pedido) return cerrarHoja(); I = { intencion: 'entrega', pedido_ref: E.pedido.value }; }
   if (tipo === 'cobro') { if (!valorQuien(f, 'cliente')) err = 'Elige quién pagó'; else if (!numv(E.monto.value)) err = 'Pon el monto'; I = { intencion: 'cobro', cliente: valorQuien(f, 'cliente'), monto: numv(E.monto.value), medio: segVal(f) }; }
@@ -676,7 +738,7 @@ async function prepararDocumento(f) {
   return { mime: esPdf ? 'application/pdf' : 'image/jpeg', datos, nombre: f.name || (esPdf ? 'documento.pdf' : 'foto.jpg'), vista: esPdf ? '' : dataUrl };
 }
 function abrirEscaner() {
-  abrirHoja('<h3><span class="hi">' + ic('scan') + '</span>Escanear documento</h3><p class="ay">Sube la orden de compra de un cliente o la factura de un proveedor. La leo y te dejo el pedido o la compra listos para revisar.</p>' +
+  abrirHoja('<h3><span class="hi">' + ic('scan') + '</span>Escanear documento</h3><p class="ay">Sube la orden de compra de un cliente, o la factura o la foto que te manda el proveedor por WhatsApp. La leo y te dejo el pedido o la compra listos para revisar.</p>' +
     '<div class="esc-ops"><label class="esc-op prim">' + ic('camera') + '<div>Tomar foto<small>Con la cámara</small></div><input type="file" accept="image/*" capture="environment" hidden onchange="escanear(this.files[0])"></label>' +
     '<label class="esc-op">' + ic('file') + '<div>Elegir archivo<small>Foto o PDF</small></div><input type="file" accept="image/*,application/pdf" hidden onchange="escanear(this.files[0])"></label></div>' +
     '<ul class="tips"><li>' + ic('check') + 'Que se vea toda la hoja</li><li>' + ic('check') + 'Buena luz, sin sombras</li><li>' + ic('check') + 'También sirve escrita a mano</li></ul>');
@@ -709,7 +771,7 @@ function mostrarLeido(d) {
   const esCompra = D.tipo === 'compra';
   const cab = '<div class="leido"><span class="qi">' + ic(esCompra ? 'receipt' : 'list') + '</span><div><b>' + (esCompra ? 'Factura de proveedor' : 'Orden de compra') + '</b><span>' + esc([D.referencia ? 'N.º ' + D.referencia : '', D.quien, D.fecha ? fechaLarga(String(D.fecha)) : ''].filter(Boolean).join(' · ') || 'Leído del documento') + '</span></div><span class="chip c-verde liso">' + ic('spark') + 'Leído</span></div>';
   const duda = D.duda ? '<div class="duda">' + ic('alert') + '<div>' + esc(D.duda) + '</div></div>' : '';
-  abrirHoja('<h3>Revisa antes de guardar</h3>' + cab + duda + '<div class="resumen">' + fmt(String(d.texto).replace(/\n\n¿Lo registro\?$/, '')) + '</div><div class="fila2"><button class="btn sec" onclick="corregirLeido()">' + ic('pencil') + 'Corregir</button><button class="btn prim" id="btnSi" onclick="responder(\'si\')">' + ic('check') + 'Sí, registrar</button></div>');
+  abrirHoja('<h3>Revisa antes de guardar</h3>' + cab + duda + '<div class="resumen">' + fmt(String(d.texto).replace(/\n\n¿Lo (registro|anulo|cancelo)\?$/, '')) + '</div><div class="fila2"><button class="btn sec" onclick="corregirLeido()">' + ic('pencil') + 'Corregir</button><button class="btn prim" id="btnSi" onclick="responder(\'si\')">' + ic('check') + (/¿Lo anulo\?$/.test(d.texto) ? 'Sí, anular' : /¿Lo cancelo\?$/.test(d.texto) ? 'Sí, cancelar' : 'Sí, registrar') + '</button></div>');
 }
 // "Corregir" en un documento abre el formulario ya lleno con lo que se leyó.
 function corregirLeido() {
@@ -726,7 +788,7 @@ function corregirLeido() {
 /* ---------- Confirmar y registrar ---------- */
 function mostrarConfirmacion(d) {
   if (!d.botones || !d.botones.length) { abrirHoja('<h3><span class="hi">' + ic('chat') + '</span>Fruti-Bot</h3><div class="resumen">' + fmt(d.texto) + '</div><button class="btn sec ancho" onclick="cerrarHoja()">Entendido</button>'); return; }
-  abrirHoja('<h3>¿Está bien?</h3><div class="resumen">' + fmt(String(d.texto).replace(/\n\n¿Lo registro\?$/, '')) + '</div><div class="fila2"><button class="btn sec" onclick="responder(\'no\')">' + ic('pencil') + 'Corregir</button><button class="btn prim" id="btnSi" onclick="responder(\'si\')">' + ic('check') + 'Sí, registrar</button></div>');
+  abrirHoja('<h3>¿Está bien?</h3><div class="resumen">' + fmt(String(d.texto).replace(/\n\n¿Lo (registro|anulo|cancelo)\?$/, '')) + '</div><div class="fila2"><button class="btn sec" onclick="responder(\'no\')">' + ic('pencil') + 'Corregir</button><button class="btn prim" id="btnSi" onclick="responder(\'si\')">' + ic('check') + (/¿Lo anulo\?$/.test(d.texto) ? 'Sí, anular' : /¿Lo cancelo\?$/.test(d.texto) ? 'Sí, cancelar' : 'Sí, registrar') + '</button></div>');
 }
 async function responder(id) {
   if (id === 'si') { const b = $('btnSi'); b.disabled = true; b.textContent = 'Registrando…'; }
@@ -734,6 +796,7 @@ async function responder(id) {
     const d = await api({ accion: 'mensaje', boton_id: id });
     if (id !== 'si') { cerrarHoja(); return toast('No se registró nada'); }
     if (!/^✅/.test(String(d.texto || ''))) return mostrarConfirmacion(d);
+    if (despuesDeAnular && /Anulado/.test(d.texto)) { const pre = despuesDeAnular; despuesDeAnular = null; await cargar(); toast('Venta anulada. Ahora anótalo como pedido'); return abrirForm('pedido', pre); }
     vibra([12, 60, 18]);
     abrirHoja('<div class="exito"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="40"/><path d="M26 43.5 37.500 55 59 31.500"/></svg><h3>Registrado</h3></div><div class="resumen">' + fmt(String(d.texto).replace(/^✅ Registrado\.\n/, '')) + '</div><div class="fila2"><button class="btn sec" onclick="cerrarHoja()">Listo</button><button class="btn prim" id="btnCompro" disabled>Comprobante…</button></div>');
     await cargar();
@@ -773,6 +836,16 @@ function filasMovimientos(lista) {
   return lista.map(a => '<button class="fila" onclick="verComprobante(' + a.numero + ')"><div class="av">' + ic(ICONO_MOV[a.tipo] || 'file') + '</div><div class="cu"><div class="t" style="font-size:14px">' + esc(String(a.texto).replace(/^\S+\s/, '')) + '</div><div class="s">' + esc(a.usuario) + ' · ' + esc(String(a.fecha).slice(5, 16).replace('-', '/')) + ' · N.º ' + nComp(a.numero) + '</div></div>' + ic('chev', 'ch') + '</button>').join('');
 }
 function verMovimientos() { abrirHoja('<h3><span class="hi">' + ic('receipt') + '</span>Comprobantes</h3><p class="ay">Toca uno para verlo, imprimirlo o guardarlo en PDF.</p><div class="card">' + filasMovimientos((TB && TB.actividad) || []) + '</div>'); }
+function itemsDeResumen(r) {
+  return String(r).split('\n').map(l => l.match(/^•\s*([\d.]+)\s*kg\s+(.+?)\s+×\s+\$([\d.]+)/)).filter(Boolean).map(m => { const pr = L().productos.find(x => x.nombre === m[2]); return { producto: pr ? pr.codigo : m[2], cantidad: +m[1], precio: +m[3] }; });
+}
+let despuesDeAnular = null;
+async function anularMov(numero, comoPedido) {
+  const m = ((TB && TB.actividad) || []).find(a => a.numero === numero); if (!m) return;
+  $('compro').classList.remove('on');
+  if (comoPedido) { const cli = (String(m.resumen).split('\n')[0].match(/—\s*(.+)$/) || [])[1] || ''; despuesDeAnular = { cliente: cli.split(' · ')[0].replace(/\s*\(.*$/, '').trim(), sede: cli.split(' · ')[1] || '', items: itemsDeResumen(m.resumen) }; }
+  try { mostrarConfirmacion(await api({ accion: 'mensaje', interpretacion: { intencion: 'anular', op_id: m.op_id } })); } catch (e) { toast(e.message); }
+}
 function verComprobante(numero) {
   const m = ((TB && TB.actividad) || []).find(a => a.numero === numero);
   if (!m) return toast('No encontré ese comprobante');
@@ -798,6 +871,7 @@ function verComprobante(numero) {
   if (extra.length) h += '<div class="extra">' + extra.map(esc).join('<br>') + '</div>';
   if (total) h += '<div class="tot"><span>Total</span><span>' + esc(total) + '</span></div>';
   h += '<div class="firmas"><div>Entregué</div><div>Recibí conforme</div></div><div class="pie">Comprobante interno de Frutimóvil · no reemplaza a la factura<br>Ref. ' + esc(m.op_id || '') + '</div></div>';
+  if (['pedido', 'venta', 'entrega', 'compra'].includes(m.tipo)) h += '<div class="anular-box">' + (m.tipo === 'venta' ? '<button class="btn sec" onclick="anularMov(' + numero + ',true)">' + ic('list') + 'Esto era un pedido</button>' : '') + '<button class="btn sec rojo-txt" onclick="anularMov(' + numero + ')">' + ic('x') + 'Anular este registro</button></div>';
   h += '<div class="compro-bts"><button class="btn sec" onclick="$(\'compro\').classList.remove(\'on\')">Cerrar</button>' + (navigator.share ? '<button class="btn sec" onclick="compartirComprobante(' + numero + ')">Compartir</button>' : '') + '<button class="btn prim" onclick="window.print()">' + ic('print') + 'Imprimir / PDF</button></div>';
   let c = $('compro'); if (!c) { c = document.createElement('div'); c.id = 'compro'; document.body.appendChild(c); }
   c.innerHTML = h; c.classList.add('on'); c.scrollTop = 0;
