@@ -162,7 +162,12 @@ nav .badge{position:absolute;top:5px;right:calc(50% - 22px);background:var(--ber
 .velo.on{opacity:1;pointer-events:auto}
 .hoja{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-radius:28px 28px 0 0;z-index:41;max-height:92dvh;overflow-y:auto;transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.9,.2,1);padding:10px 18px calc(env(safe-area-inset-bottom) + 20px)}
 .hoja.on{transform:none}
-.hoja .asa{width:40px;height:5px;border-radius:5px;background:var(--rosa2);margin:2px auto 14px}
+.hoja .asa{width:40px;height:5px;border-radius:5px;background:var(--rosa2);margin:0 auto}
+.hbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin:0 -6px 10px;min-height:36px}
+.hbar button{font-weight:800;font-size:15px;color:var(--acento);padding:8px 10px;border-radius:12px}
+.hbar #hAtras{justify-self:start;visibility:hidden}
+.hbar #hAtras.on{visibility:visible}
+.hbar #hCerrar{justify-self:end;width:36px;height:36px;padding:0;border-radius:50%;background:var(--rosa);font-size:14px}
 .hoja h3{font-size:20px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:10px;letter-spacing:-.3px}
 .hoja h3 .hi{width:38px;height:38px;border-radius:13px;background:var(--rosa);color:var(--acento);display:grid;place-items:center}
 .hoja p.ay{color:var(--muted);font-size:13.5px;margin:-8px 0 14px;font-weight:500}
@@ -394,11 +399,11 @@ textarea.inp{min-height:150px;resize:vertical;line-height:1.5;font-size:15px}
 </nav>
 
 <div class="velo" id="velo"></div>
-<div class="hoja" id="hoja"><div class="asa"></div><div id="hojaC"></div></div>
+<div class="hoja" id="hoja"><div class="hbar"><button type="button" id="hAtras" onclick="atrasHoja()" aria-label="Volver">‹ Atrás</button><div class="asa"></div><button type="button" id="hCerrar" onclick="cerrarHoja()" aria-label="Cerrar">✕</button></div><div id="hojaC"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
-const VERSION = '3.1';
+const VERSION = '3.2';
 const API = 'https://frutimovil.duckdns.org/webhook/fm-app-api';
 const $ = id => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -639,8 +644,31 @@ async function copiarProv() { try { await navigator.clipboard.writeText($('txtPr
 async function enviarProv() { const t = $('txtProv').value; if (navigator.share) { try { await navigator.share({ text: t }); } catch (e) {} } else window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank'); }
 
 /* ---------- Hoja inferior ---------- */
-function abrirHoja(html) { $('hojaC').innerHTML = html; $('velo').classList.add('on'); $('hoja').classList.add('on'); $('hoja').scrollTop = 0; }
-function cerrarHoja() { $('velo').classList.remove('on'); $('hoja').classList.remove('on'); }
+/* Hojas con "Atrás": cada hoja que se abre encima de otra guarda la anterior, y el botón atrás del teléfono también funciona. */
+const pila = []; let histN = 0, ignorarPop = 0;
+const hojaAbierta = () => $('hoja').classList.contains('on');
+const tituloHoja = n => { const h = n.querySelector('h3'); return h ? h.textContent.trim() : ''; };
+const pintarBarra = () => $('hAtras').classList.toggle('on', pila.length > 0);
+function empujarHist() { try { history.pushState({ fm: 1 }, ''); histN++; } catch (e) {} }
+function retrocederHist(n) { if (n > 0 && histN >= n) { histN -= n; ignorarPop++; try { history.go(-n); } catch (e) { ignorarPop--; } } }
+function abrirHoja(html) {
+  const c = $('hojaC'), tmp = document.createElement('div'); tmp.innerHTML = html;
+  const t = tituloHoja(tmp);
+  if (hojaAbierta()) {
+    const i = t ? pila.findIndex(x => x.t === t) : -1;
+    if (i >= 0) { const sobran = pila.length - i; pila.length = i; retrocederHist(sobran); }
+    else if (!t || t !== tituloHoja(c)) { const f = document.createDocumentFragment(), y = $('hoja').scrollTop, ta = tituloHoja(c); while (c.firstChild) f.appendChild(c.firstChild); pila.push({ t: ta, f, y }); empujarHist(); }
+  } else { pila.length = 0; empujarHist(); }
+  c.innerHTML = html; $('velo').classList.add('on'); $('hoja').classList.add('on'); $('hoja').scrollTop = 0; pintarBarra();
+}
+function cerrarHoja() { $('velo').classList.remove('on'); $('hoja').classList.remove('on'); pila.length = 0; pintarBarra(); retrocederHist(histN); }
+function pasoAtras() {
+  if (!pila.length) { $('velo').classList.remove('on'); $('hoja').classList.remove('on'); return; }
+  const p = pila.pop(), c = $('hojaC'); c.innerHTML = ''; c.appendChild(p.f); $('hoja').scrollTop = p.y; pintarBarra();
+}
+function atrasHoja() { if (histN > 0) history.back(); else pasoAtras(); }
+function olvidarAnteriores() { const n = pila.length; if (!n) return; pila.length = 0; pintarBarra(); retrocederHist(n); }
+window.addEventListener('popstate', () => { if (ignorarPop > 0) { ignorarPop--; return; } if (histN > 0) histN--; if (hojaAbierta()) pasoAtras(); });
 $('velo').onclick = cerrarHoja;
 $('fab').onclick = () => abrirHoja('<h3>¿Qué pasó?</h3><div class="grandes">' + [['pedido', 'list', 'Me hicieron un pedido', 'Para entregar otro día'], ['entrega', 'truck', 'Entregué un pedido', 'Ya lo dejé en el cliente'], ['compra', 'receipt', 'Compré fruta', 'A un proveedor'], ['cobro', 'in', 'Me pagaron', 'Un cliente me pagó']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="qi">' + ic(a[1]) + '</span><div><b>' + a[2] + '</b><span>' + a[3] + '</span></div></button>').join('') + '</div><button class="dest-doc" onclick="abrirForm(\'documento\')"><span class="qi">' + ic('scan') + '</span><div><b>Tengo una foto</b><span>Orden de un cliente o nota del proveedor (WhatsApp)</span></div><span class="ia">' + ic('spark') + 'IA</span></button><div class="secc" style="margin:18px 2px 8px"><h2 style="font-size:14px">Otras cosas</h2></div><div class="acciones">' + [['venta', 'cash', 'Venta sin pedido'], ['pago', 'out', 'Pagué a proveedor'], ['merma', 'trash', 'Fruta botada'], ['gasto', 'out', 'Gasto'], ['producto', 'plus', 'Producto nuevo'], ['bot', 'chat', 'Escribir al bot']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="qi">' + ic(a[1]) + '</span>' + a[2] + '</button>').join('') + '</div>');
 
@@ -968,7 +996,7 @@ async function guardar(body, boton) {
   try {
     const d = await api(Object.assign({ accion: 'guardar' }, body));
     if (!d || !d.ok) throw new Error((d && d.error) || 'No se pudo guardar.');
-    vibra(15); await cargar(); toast(d.mensaje || 'Guardado');
+    vibra(15); await cargar(); olvidarAnteriores(); toast(d.mensaje || 'Guardado');
     return true;
   } catch (e) { toast(e.message); if (boton) { boton.disabled = false; boton.innerHTML = txt; } return false; }
 }
