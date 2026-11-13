@@ -398,7 +398,7 @@ textarea.inp{min-height:150px;resize:vertical;line-height:1.5;font-size:15px}
 <div class="toast" id="toast"></div>
 
 <script>
-const VERSION = '3.0';
+const VERSION = '3.1';
 const API = 'https://frutimovil.duckdns.org/webhook/fm-app-api';
 const $ = id => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -532,6 +532,7 @@ function pintarInicio() {
   else h += vacio('truck', 'Sin entregas pendientes');
 
   h += '<div class="secc"><h2>Este mes</h2></div><div class="dos" style="margin-top:0"><div class="mini"><div class="et">' + ic('trend') + 'Vendido</div><div class="v">' + din(N.mes.vendido) + '</div><div class="pie">Ganancia ' + din(N.mes.ganancia) + '</div></div><div class="mini"><div class="et">' + ic('trash') + 'Fruta botada</div><div class="v ' + (N.mes.botado > 0 ? 'rojo' : 'verde') + '">' + din(N.mes.botado) + '</div><div class="pie">' + (N.mes.botado > 0 ? 'Plata perdida' : 'Nada botado') + '</div></div></div>';
+  if (N.mes.gastos != null) h += '<button class="card" style="width:100%;margin-top:10px;text-align:left" onclick="verGastos()"><div class="fila" style="padding:0;border:0"><div class="av">' + ic('out') + '</div><div class="cu"><div class="t">Ganancia real ' + din(N.mes.neta) + '</div><div class="s">Gastos del mes ' + din(N.mes.gastos) + ' · toca para anotar uno</div></div>' + ic('chev', 'ch') + '</div></button>';
   if (TB.actividad.length) h += '<div class="secc"><h2>Lo último</h2><button class="link" onclick="verMovimientos()">Comprobantes' + ic('chev') + '</button></div><div class="card">' + filasMovimientos(TB.actividad.slice(0, 5)) + '</div>';
   $('v-inicio').innerHTML = h;
   contar($('heroNum'), N.semana.vendido);
@@ -641,7 +642,7 @@ async function enviarProv() { const t = $('txtProv').value; if (navigator.share)
 function abrirHoja(html) { $('hojaC').innerHTML = html; $('velo').classList.add('on'); $('hoja').classList.add('on'); $('hoja').scrollTop = 0; }
 function cerrarHoja() { $('velo').classList.remove('on'); $('hoja').classList.remove('on'); }
 $('velo').onclick = cerrarHoja;
-$('fab').onclick = () => abrirHoja('<h3>¿Qué pasó?</h3><div class="grandes">' + [['pedido', 'list', 'Me hicieron un pedido', 'Para entregar otro día'], ['entrega', 'truck', 'Entregué un pedido', 'Ya lo dejé en el cliente'], ['compra', 'receipt', 'Compré fruta', 'A un proveedor'], ['cobro', 'in', 'Me pagaron', 'Un cliente me pagó']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="qi">' + ic(a[1]) + '</span><div><b>' + a[2] + '</b><span>' + a[3] + '</span></div></button>').join('') + '</div><button class="dest-doc" onclick="abrirForm(\'documento\')"><span class="qi">' + ic('scan') + '</span><div><b>Tengo una foto</b><span>Orden de un cliente o nota del proveedor (WhatsApp)</span></div><span class="ia">' + ic('spark') + 'IA</span></button><div class="secc" style="margin:18px 2px 8px"><h2 style="font-size:14px">Otras cosas</h2></div><div class="acciones">' + [['venta', 'cash', 'Venta sin pedido'], ['pago', 'out', 'Pagué a proveedor'], ['merma', 'trash', 'Fruta botada'], ['bot', 'chat', 'Escribir al bot']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="qi">' + ic(a[1]) + '</span>' + a[2] + '</button>').join('') + '</div>');
+$('fab').onclick = () => abrirHoja('<h3>¿Qué pasó?</h3><div class="grandes">' + [['pedido', 'list', 'Me hicieron un pedido', 'Para entregar otro día'], ['entrega', 'truck', 'Entregué un pedido', 'Ya lo dejé en el cliente'], ['compra', 'receipt', 'Compré fruta', 'A un proveedor'], ['cobro', 'in', 'Me pagaron', 'Un cliente me pagó']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="qi">' + ic(a[1]) + '</span><div><b>' + a[2] + '</b><span>' + a[3] + '</span></div></button>').join('') + '</div><button class="dest-doc" onclick="abrirForm(\'documento\')"><span class="qi">' + ic('scan') + '</span><div><b>Tengo una foto</b><span>Orden de un cliente o nota del proveedor (WhatsApp)</span></div><span class="ia">' + ic('spark') + 'IA</span></button><div class="secc" style="margin:18px 2px 8px"><h2 style="font-size:14px">Otras cosas</h2></div><div class="acciones">' + [['venta', 'cash', 'Venta sin pedido'], ['pago', 'out', 'Pagué a proveedor'], ['merma', 'trash', 'Fruta botada'], ['gasto', 'out', 'Gasto'], ['producto', 'plus', 'Producto nuevo'], ['bot', 'chat', 'Escribir al bot']].map(a => '<button onclick="abrirForm(\'' + a[0] + '\')"><span class="qi">' + ic(a[1]) + '</span>' + a[2] + '</button>').join('') + '</div>');
 
 const L = () => (TB && TB.listas) || { productos: [], clientes: [], proveedores: [], presentaciones: [] };
 const opt = (arr, val, vacio) => (vacio ? '<option value="">' + vacio + '</option>' : '') + arr.map(o => { const v = typeof o === 'string' ? o : o.v; const t = typeof o === 'string' ? o : o.t; return '<option value="' + esc(v) + '"' + (v === val ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('');
@@ -658,6 +659,8 @@ function abrirForm(tipo, pre) {
   pre = pre || {};
   if (tipo === 'bot') { cerrarHoja(); ir('bot'); setTimeout(() => $('txt').focus(), 250); return; }
   if (tipo === 'documento') return abrirEscaner();
+  if (tipo === 'gasto') return verGastos();
+  if (tipo === 'producto') return nuevoProducto();
   const cl = L().clientes.map(c => ({ v: c.nombre, t: c.nombre + (c.tipo === 'MAYORISTA' ? ' · mayorista' : '') }));
   let h = '';
   if (tipo === 'compra') h = '<h3><span class="hi">' + ic('receipt') + '</span>Compra</h3><label class="campo"><span>Proveedor</span><select class="inp" name="proveedor">' + opt(L().proveedores, pre.proveedor, 'Elige proveedor') + '<option value="__otro">Otro…</option></select></label><input class="inp" name="proveedor_otro" placeholder="Nombre del proveedor" style="display:none;margin:-4px 0 12px">' + btnContacto('proveedor') + '<div id="renglones">' + renglonesPre('compra', pre) + '</div><button type="button" class="mas" onclick="agregarRenglon(\'compra\')">＋ Otra fruta</button>';
@@ -955,6 +958,119 @@ $('archivoChat').onchange = async ev => {
 };
 
 /* ---------- Mi cuenta ---------- */
+/* ---------- Catálogo: productos, precios, costos, clientes y gastos ---------- */
+const C = () => (TB && TB.catalogo) || null;
+const sinCatalogo = () => { toast('Toca actualizar ↻ y prueba otra vez'); cargar(); };
+const numIn = v => { const n = parseFloat(String(v == null ? '' : v).replace(/[$\s]/g, '').replace(',', '.')); return isNaN(n) ? null : n; };
+async function guardar(body, boton) {
+  const txt = boton ? boton.innerHTML : '';
+  if (boton) { boton.disabled = true; boton.textContent = 'Guardando…'; }
+  try {
+    const d = await api(Object.assign({ accion: 'guardar' }, body));
+    if (!d || !d.ok) throw new Error((d && d.error) || 'No se pudo guardar.');
+    vibra(15); await cargar(); toast(d.mensaje || 'Guardado');
+    return true;
+  } catch (e) { toast(e.message); if (boton) { boton.disabled = false; boton.innerHTML = txt; } return false; }
+}
+const porUnidad = u => u === 'kg' ? 'por kg' : 'por ' + u;
+function itemsCatalogo() {
+  const c = C(); if (!c) return [];
+  const costoDe = cod => { const f = c.precios.find(p => p.codigo === cod && p.lista.toUpperCase() === 'COSTO'); return f ? f : null; };
+  const it = c.productos.map(p => ({ codigo: p.codigo, nombre: p.nombre, unidad: p.unidad, activo: p.activo, extra: false }));
+  [...new Set(c.precios.filter(p => p.codigo.indexOf('OTRO:') === 0).map(p => p.codigo))].forEach(cod => it.push({ codigo: cod, nombre: cod.slice(5), unidad: 'kg', activo: true, extra: true }));
+  it.forEach(i => { i.costo = costoDe(i.codigo); i.precios = c.precios.filter(p => p.codigo === i.codigo && p.lista.toUpperCase() !== 'COSTO'); });
+  return it.sort((a, b) => (b.activo - a.activo) || (a.extra - b.extra) || a.nombre.localeCompare(b.nombre));
+}
+function verCatalogo() {
+  if (!C()) return sinCatalogo();
+  const filas = itemsCatalogo().map(i => '<button class="fila" onclick="verPreciosDe(\'' + js(i.codigo) + '\')"' + (i.activo ? '' : ' style="opacity:.5"') + '>' + (i.extra ? '<div class="av">' + ic('leaf') + '</div>' : avProd(i.codigo)) + '<div class="cu"><div class="t">' + esc(i.nombre) + '</div><div class="s">' + (i.activo ? '' : 'Oculto · ') + (i.extra ? 'Fruta extra · ' : '') + i.precios.filter(p => p.precio != null).length + ' precio(s)</div></div><div class="der"><div class="num' + (i.costo && i.costo.precio != null ? '' : ' rojo') + '" style="font-size:14px">' + (i.costo && i.costo.precio != null ? din(i.costo.precio) : 'Sin costo') + '</div><div class="s">' + (i.costo && i.costo.precio != null ? 'costo' + (i.costo.presentacion !== 'kg' ? ' · ' + esc(i.costo.presentacion) : '') : 'ponlo aquí') + '</div></div>' + ic('chev', 'ch') + '</button>').join('');
+  abrirHoja('<h3><span class="hi">' + ic('cash') + '</span>Precios y costos</h3><p class="ay">Toca un producto para cambiar cuánto te cuesta y a cuánto lo vendes. La ganancia se calcula con estos costos.</p><button class="btn prim ancho" style="margin-bottom:14px" onclick="nuevoProducto()">' + ic('plus') + 'Producto nuevo</button><div class="card">' + filas + '</div>');
+}
+function verPreciosDe(codigo) {
+  const c = C(); if (!c) return sinCatalogo();
+  const i = itemsCatalogo().find(x => x.codigo === codigo); if (!i) return verCatalogo();
+  const pres = i.costo ? i.costo.presentacion : (i.unidad === 'kg' ? 'kg' : i.unidad);
+  let h = '<h3><span class="hi">' + ic('pencil') + '</span>' + esc(i.nombre) + '</h3><form id="frmPrecios" onsubmit="return false">';
+  h += '<label class="campo"><span>Lo que te cuesta (' + esc(pres === 'kg' ? 'por kg' : 'cada ' + pres) + ')</span><input class="inp" inputmode="decimal" data-lista="COSTO" data-pres="' + esc(pres) + '" data-antes="' + (i.costo && i.costo.precio != null ? i.costo.precio : '') + '" value="' + (i.costo && i.costo.precio != null ? i.costo.precio : '') + '" placeholder="$ costo"></label>';
+  h += '<div class="secc" style="margin:18px 2px 8px"><h2 style="font-size:15px">A cuánto lo vendes</h2></div>';
+  if (!i.precios.length) h += '<p class="ay" style="margin:0 0 12px">Todavía no tiene precios.</p>';
+  i.precios.forEach(p => { const quien = p.lista.toUpperCase() === 'GENERAL' ? 'Mayoristas (general)' : p.lista.toUpperCase() === 'MINORISTA' ? 'Cliente final' : p.lista; h += '<label class="campo"><span>' + esc(quien) + ' · ' + esc(p.presentacion) + '</span><input class="inp" inputmode="decimal" data-lista="' + esc(p.lista) + '" data-pres="' + esc(p.presentacion) + '" data-antes="' + (p.precio == null ? '' : p.precio) + '" value="' + (p.precio == null ? '' : p.precio) + '" placeholder="Sin precio"></label>'; });
+  h += '<div class="renglon"><div style="font-size:12.5px;font-weight:700;color:var(--muted);margin:2px 2px 8px">Agregar otro precio</div><select class="inp" id="npLista">' + opt([{ v: '', t: '¿Para quién?' }, { v: 'GENERAL', t: 'Mayoristas (general)' }, { v: 'MINORISTA', t: 'Cliente final' }].concat(c.listas.filter(l => !['GENERAL', 'MINORISTA'].includes(l.toUpperCase())).map(l => ({ v: l, t: l }))), '') + '</select><div class="g"><input class="inp" id="npPres" placeholder="kg, 500 g, 1 kg…" value="' + esc(i.unidad === 'kg' ? 'kg' : i.unidad) + '"><input class="inp" id="npPrecio" inputmode="decimal" placeholder="$ precio"></div></div>';
+  h += '<button class="btn prim ancho" id="btnPrecios" onclick="guardarPrecios(\'' + js(codigo) + '\')">' + ic('check') + 'Guardar cambios</button>';
+  if (!i.extra) h += '<button class="btn sec ancho" style="margin-top:10px" onclick="activarProducto(\'' + js(codigo) + '\',' + (i.activo ? 'false' : 'true') + ',this)">' + (i.activo ? 'Ocultar este producto' : 'Volver a mostrar este producto') + '</button>';
+  h += '<button class="btn sec ancho" style="margin-top:10px" onclick="verCatalogo()">Volver a la lista</button></form>';
+  abrirHoja(h);
+}
+async function guardarPrecios(codigo) {
+  const f = $('frmPrecios'), cambios = [];
+  for (const inp of f.querySelectorAll('input[data-lista]')) {
+    const antes = inp.dataset.antes, ahora = inp.value.trim();
+    if (ahora === antes) continue;
+    const n = ahora === '' ? '' : numIn(ahora);
+    if (n === null || n < 0) { inp.focus(); return toast('Revisa ese valor'); }
+    if (n !== '' && String(n) === antes) continue;
+    cambios.push({ lista: inp.dataset.lista, presentacion: inp.dataset.pres, precio: n });
+  }
+  const nl = $('npLista').value, np = numIn($('npPrecio').value);
+  if (nl && np === null) { $('npPrecio').focus(); return toast('Pon el precio nuevo'); }
+  if (!nl && np !== null) { $('npLista').focus(); return toast('Elige para quién es ese precio'); }
+  if (nl) cambios.push({ lista: nl, presentacion: ($('npPres').value || 'kg').trim(), precio: np });
+  if (!cambios.length) return toast('No cambiaste nada');
+  const b = $('btnPrecios');
+  for (const c of cambios) { if (!(await guardar(Object.assign({ op: 'precio', codigo }, c), b))) return; }
+  verPreciosDe(codigo);
+}
+async function activarProducto(codigo, activo, b) { if (await guardar({ op: 'producto_activo', codigo, activo }, b)) verCatalogo(); }
+function nuevoProducto() {
+  if (!C()) return sinCatalogo();
+  abrirHoja('<h3><span class="hi">' + ic('plus') + '</span>Producto nuevo</h3><p class="ay">Queda en el stock, en los pedidos, en las ventas y en las compras, igual que la fresa.</p><form id="frmProd" onsubmit="return false"><label class="campo"><span>Nombre</span><input class="inp" name="nombre" placeholder="Ej: Zucchini" autocomplete="off"></label><label class="campo"><span>¿Cómo se vende?</span><select class="inp" name="unidad"><option value="kg">Por kilo</option><option value="unidad">Por unidad</option></select></label><div class="renglon" style="padding:10px"><div class="g" style="margin-top:0"><input class="inp" name="costo" inputmode="decimal" placeholder="$ lo que te cuesta"><input class="inp" name="precio" inputmode="decimal" placeholder="$ a cuánto lo vendes"></div></div><label class="campo"><span>¿Cuántos días aguanta fresco?</span><input class="inp" name="dias" inputmode="numeric" value="5"></label><p class="ay" style="margin:0 0 14px">El precio es el general. Después puedes poner uno distinto por cliente.</p><button class="btn prim ancho" onclick="crearProducto(this)">' + ic('check') + 'Crear producto</button></form>');
+  setTimeout(() => { const n = $('frmProd'); if (n) n.elements.nombre.focus(); }, 300);
+}
+async function crearProducto(b) {
+  const E = $('frmProd').elements, nombre = E.nombre.value.trim();
+  if (nombre.length < 2) { E.nombre.focus(); return toast('Ponle un nombre'); }
+  const costo = numIn(E.costo.value), precio = numIn(E.precio.value);
+  if (E.costo.value.trim() && costo === null) { E.costo.focus(); return toast('Revisa el costo'); }
+  if (E.precio.value.trim() && precio === null) { E.precio.focus(); return toast('Revisa el precio'); }
+  if (await guardar({ op: 'producto', nombre, unidad: E.unidad.value, costo, precio, dias_vida: E.dias.value }, b)) verCatalogo();
+}
+function nuevoCliente() {
+  abrirHoja('<h3><span class="hi">' + ic('contact') + '</span>Cliente nuevo</h3><form id="frmCli" onsubmit="return false">' + (hayContactos ? '<button type="button" class="contacto" style="margin:0 0 12px" onclick="contactoCliente()">' + ic('contact') + 'Elegir de mis contactos</button>' : (esIOS ? '<p class="ay" style="margin:0 0 12px">En iPhone no se puede abrir la agenda desde la app: escribe el nombre y pega el número.</p>' : '')) + '<label class="campo"><span>Nombre</span><input class="inp" name="nombre" autocomplete="off" placeholder="Ej: Restaurante La Plaza"></label><label class="campo"><span>Teléfono (opcional)</span><input class="inp" name="telefono" type="tel" inputmode="tel" autocomplete="off" placeholder="09…"></label><label class="campo"><span>Tipo</span><select class="inp" name="tipo"><option value="MAYORISTA">Mayorista (por kilo)</option><option value="MINORISTA">Cliente final (tarrinas)</option></select></label><button class="btn prim ancho" onclick="crearCliente(this)">' + ic('check') + 'Guardar cliente</button></form>');
+}
+async function contactoCliente() {
+  try {
+    const [c] = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+    if (!c) return;
+    const E = $('frmCli').elements;
+    E.nombre.value = String((c.name || [])[0] || '').trim();
+    E.telefono.value = String((c.tel || [])[0] || '').replace(/[^\d+]/g, '');
+  } catch (e) { toast('No pude abrir los contactos'); }
+}
+async function crearCliente(b) {
+  const E = $('frmCli').elements, nombre = E.nombre.value.trim();
+  if (nombre.length < 2) { E.nombre.focus(); return toast('Ponle un nombre'); }
+  if (await guardar({ op: 'cliente', nombre, telefono: E.telefono.value, tipo: E.tipo.value }, b)) cerrarHoja();
+}
+let catGasto = 'Gasolina';
+function verGastos() {
+  const c = C(); if (!c) return sinCatalogo();
+  const N = TB.numeros, mes = hoyISO().slice(0, 7);
+  const delMes = c.gastos.filter(g => g.fecha.slice(0, 7) === mes);
+  let h = '<h3><span class="hi">' + ic('out') + '</span>Gastos</h3><p class="ay">Gasolina, tarrinas, fundas… Se restan de la ganancia.</p><form id="frmGasto" onsubmit="return false"><div class="chips-sede" id="chipsGasto">' + c.categorias.map(k => '<button type="button" class="chip liso" data-k="' + esc(k) + '" onclick="elegirCatGasto(this)" style="padding:9px 14px;font-size:13.5px">' + esc(k) + '</button>').join('') + '</div><div class="renglon" style="padding:10px"><div class="g" style="margin-top:0"><input class="inp" name="monto" inputmode="decimal" placeholder="$ cuánto"><input class="inp" type="date" name="fecha" value="' + hoyISO() + '"></div><input class="inp" name="nota" placeholder="Nota (opcional)" style="margin-top:8px" autocomplete="off"></div><button class="btn prim ancho" onclick="crearGasto(this)">' + ic('check') + 'Anotar gasto</button></form>';
+  h += '<div class="dos"><div class="mini"><div class="et">' + ic('out') + 'Gastos del mes</div><div class="v">' + din(N.mes.gastos) + '</div><div class="pie">Semana ' + din(N.semana.gastos) + '</div></div><div class="mini"><div class="et">' + ic('trend') + 'Ganancia real</div><div class="v ' + (N.mes.neta >= 0 ? 'verde' : 'rojo') + '">' + din(N.mes.neta) + '</div><div class="pie">Fruta ' + din(N.mes.ganancia) + ' − gastos' + (N.mes.botado > 0 ? ' − botado' : '') + '</div></div></div>';
+  h += '<div class="secc" style="margin:18px 2px 8px"><h2 style="font-size:15px">Este mes</h2></div>' + (delMes.length ? '<div class="card">' + delMes.map(g => '<div class="fila"><div class="av">' + ic('out') + '</div><div class="cu"><div class="t">' + esc(g.categoria) + (g.nota ? ' · ' + esc(g.nota) : '') + '</div><div class="s">' + esc(fechaLarga(g.fecha)) + (g.usuario ? ' · ' + esc(g.usuario) : '') + '</div></div><div class="der"><div class="num">' + din(g.monto) + '</div><button type="button" class="s rojo" style="font-weight:700" onclick="borrarGasto(\'' + js(g.id) + '\',this)">Borrar</button></div></div>').join('') + '</div>' : vacio('out', 'Sin gastos este mes'));
+  abrirHoja(h);
+  pintarCatGasto();
+}
+function pintarCatGasto() { document.querySelectorAll('#chipsGasto button').forEach(b => { const on = b.dataset.k === catGasto; b.style.background = on ? 'var(--vino)' : 'var(--card)'; b.style.color = on ? '#fff' : 'var(--acento)'; b.style.boxShadow = on ? 'none' : 'inset 0 0 0 1.5px var(--rosa2)'; }); }
+function elegirCatGasto(b) { catGasto = b.dataset.k; pintarCatGasto(); const n = $('frmGasto').elements.nota; if (catGasto === 'Otro') n.focus(); else $('frmGasto').elements.monto.focus(); }
+async function crearGasto(b) {
+  const E = $('frmGasto').elements, monto = numIn(E.monto.value);
+  if (monto === null || monto <= 0) { E.monto.focus(); return toast('Pon cuánto gastaste'); }
+  if (await guardar({ op: 'gasto', categoria: catGasto, monto, nota: E.nota.value, fecha: E.fecha.value }, b)) verGastos();
+}
+async function borrarGasto(id, b) { if (b.dataset.seguro !== '1') { b.dataset.seguro = '1'; b.textContent = '¿Seguro? Toca otra vez'; return; } if (await guardar({ op: 'gasto_borrar', id }, b)) verGastos(); }
+
 let NOMBRE = '';
 $('btnCuenta').onclick = () => {
   const avisos = !('Notification' in window) ? 'No disponibles en este teléfono' : Notification.permission === 'granted' ? 'Activados' : Notification.permission === 'denied' ? 'Bloqueados en el teléfono' : 'Sin activar';
@@ -962,6 +1078,9 @@ $('btnCuenta').onclick = () => {
     '<button class="fila" onclick="cerrarHoja();$(\'btnAvisos\').style.display!==\'none\'?$(\'btnAvisos\').click():toast(\'Avisos: ' + avisos.toLowerCase() + '\')"><div class="av">' + ic('bell') + '</div><div class="cu"><div class="t">Avisos en el teléfono</div><div class="s">' + avisos + '</div></div>' + ic('chev', 'ch') + '</button>' +
     '<button class="fila" onclick="verMovimientos()"><div class="av">' + ic('receipt') + '</div><div class="cu"><div class="t">Comprobantes</div><div class="s">Ver, imprimir o guardar en PDF</div></div>' + ic('chev', 'ch') + '</button>' +
     '<button class="fila" onclick="abrirEscaner()"><div class="av">' + ic('scan') + '</div><div class="cu"><div class="t">Escanear orden o factura</div><div class="s">Foto o PDF, con inteligencia artificial</div></div>' + ic('chev', 'ch') + '</button>' +
+    '<button class="fila" onclick="verCatalogo()"><div class="av">' + ic('cash') + '</div><div class="cu"><div class="t">Precios y costos</div><div class="s">Cambiar precios, costos y crear productos</div></div>' + ic('chev', 'ch') + '</button>' +
+    '<button class="fila" onclick="verGastos()"><div class="av">' + ic('out') + '</div><div class="cu"><div class="t">Gastos</div><div class="s">Gasolina, empaques y otros</div></div>' + ic('chev', 'ch') + '</button>' +
+    '<button class="fila" onclick="nuevoCliente()"><div class="av">' + ic('contact') + '</div><div class="cu"><div class="t">Cliente nuevo</div><div class="s">Agregar un cliente a la lista</div></div>' + ic('chev', 'ch') + '</button>' +
     (TB && TB.comprar.length ? '<button class="fila" onclick="pedidoProveedor()"><div class="av">' + ic('send') + '</div><div class="cu"><div class="t">Pedido al proveedor</div><div class="s">Lo que falta para los pedidos</div></div>' + ic('chev', 'ch') + '</button>' : '') +
     '</div><div class="ver">Frutimóvil ' + VERSION + (DEMO ? ' · modo demostración' : '') + '</div>');
 };

@@ -47,6 +47,27 @@
   };
   const derivar = () => { TB.alertas = TB.stock.filter(s => s.estado === 'hoy' || s.estado === 'manana'); TB.comprar = TB.stock.filter(s => s.comprar > 0); };
   derivar();
+  // Catálogo de demostración: precios, costos y gastos (pantallas "Precios y costos" y "Gastos").
+  const COSTO = { 'FRE-GR': 1.4, 'FRE-DP': 1, 'MOR-01': 1.67, 'FRA-PR': 8, 'FRA-MD': 7.5, 'ARA-01': 8, 'MIX-20': 9.54 };
+  TB.catalogo = {
+    productos: productos.map(p => ({ codigo: p.codigo, nombre: p.nombre, unidad: p.unidad, activo: true })),
+    precios: productos.flatMap(p => [{ codigo: p.codigo, lista: 'COSTO', presentacion: p.unidad, precio: COSTO[p.codigo], nota: '' }, { codigo: p.codigo, lista: 'GENERAL', presentacion: p.unidad, precio: PRECIO[p.codigo], nota: '' }]).concat([{ codigo: 'FRE-GR', lista: 'Hotel', presentacion: 'kg', precio: 2.2, nota: '' }, { codigo: 'OTRO:Naranja', lista: 'COSTO', presentacion: 'kg', precio: 2.33, nota: '' }, { codigo: 'OTRO:Naranja', lista: 'Datu', presentacion: 'kg', precio: 4.5, nota: '' }]),
+    listas: ['Hotel', 'HPG', 'Uko', 'Club', 'Datu'],
+    gastos: [{ id: 'G-0002', fecha: hora(0, '08:10'), categoria: 'Gasolina', monto: 10, nota: '', usuario: 'Esteban' }, { id: 'G-0001', fecha: hora(-2, '17:30'), categoria: 'Empaques', monto: 24.5, nota: 'tarrinas 500 g', usuario: 'Sandra' }],
+    categorias: ['Gasolina', 'Empaques', 'Transporte', 'Otro'],
+  };
+  const recalcGastos = () => { const t = TB.catalogo.gastos.reduce((s, g) => s + g.monto, 0), N = TB.numeros; N.hoy.gastos = 10; N.semana.gastos = t; N.mes.gastos = t; N.hoy.neta = N.hoy.ganancia - 10; N.semana.neta = N.semana.ganancia - t; N.mes.neta = N.mes.ganancia - t - N.mes.botado; };
+  recalcGastos();
+  function demoGuardar(b) {
+    const c = TB.catalogo;
+    if (b.op === 'precio') { const f = c.precios.find(p => p.codigo === b.codigo && p.lista === b.lista && p.presentacion === b.presentacion); const v = b.precio === '' ? null : Number(b.precio); if (f) f.precio = v; else c.precios.push({ codigo: b.codigo, lista: b.lista, presentacion: b.presentacion || 'kg', precio: v, nota: '' }); return { ok: true, mensaje: b.lista === 'COSTO' ? 'Costo guardado' : 'Precio guardado' }; }
+    if (b.op === 'producto') { const nombre = b.nombre.charAt(0).toUpperCase() + b.nombre.slice(1), codigo = nombre.slice(0, 3).toUpperCase() + '-01'; if (c.productos.some(p => p.nombre.toLowerCase() === nombre.toLowerCase())) return { ok: false, error: 'Ya existe: ' + nombre + '.' }; c.productos.push({ codigo, nombre, unidad: b.unidad, activo: true }); TB.listas.productos.push({ codigo, nombre, unidad: b.unidad }); TB.stock.push({ codigo, nombre, unidad: b.unidad, kg: 0, minimo: 0, lotes: 0, diasViejo: null, vence: null, diasVence: null, estado: 'sin', piden: 0, comprar: 0 }); if (b.costo != null) c.precios.push({ codigo, lista: 'COSTO', presentacion: b.unidad, precio: b.costo, nota: '' }); if (b.precio != null) c.precios.push({ codigo, lista: 'GENERAL', presentacion: b.unidad, precio: b.precio, nota: '' }); return { ok: true, mensaje: nombre + ' ya está en el catálogo' }; }
+    if (b.op === 'producto_activo') { const f = c.productos.find(p => p.codigo === b.codigo); if (f) f.activo = !!b.activo; return { ok: true, mensaje: b.activo ? 'Producto activado' : 'Producto oculto' }; }
+    if (b.op === 'cliente') { TB.listas.clientes.push({ nombre: b.nombre, tipo: b.tipo, sedes: [] }); return { ok: true, mensaje: b.nombre + ' guardado como cliente' }; }
+    if (b.op === 'gasto') { c.gastos.unshift({ id: 'G-' + Date.now(), fecha: (b.fecha || dia(0)) + ' 12:00', categoria: b.categoria, monto: Number(b.monto), nota: b.nota || '', usuario: 'Esteban' }); recalcGastos(); return { ok: true, mensaje: 'Gasto anotado' }; }
+    if (b.op === 'gasto_borrar') { c.gastos = c.gastos.filter(g => g.id !== b.id); recalcGastos(); return { ok: true, mensaje: 'Gasto borrado' }; }
+    return { ok: false, error: 'No entendí qué guardar.' };
+  }
 
   let pend = null, n = 12;
   const confirmar = texto => ({ texto: texto + '\n\n¿Lo registro?', botones: [{ id: 'si', titulo: '✅ Sí' }, { id: 'no', titulo: '✏️ Corregir' }] });
@@ -73,6 +94,7 @@
     TB,
     async api(b) {
       if (b.accion === 'hola') return { nombre: 'Esteban' };
+      if (b.accion === 'guardar') { await espera(300); return demoGuardar(b); }
       if (b.accion === 'tablero') { await espera(350); return JSON.parse(JSON.stringify(TB)); }
       if (b.accion === 'documento') {
         await espera(6200);
