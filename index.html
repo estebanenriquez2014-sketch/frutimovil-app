@@ -403,7 +403,7 @@ textarea.inp{min-height:150px;resize:vertical;line-height:1.5;font-size:15px}
 <div class="toast" id="toast"></div>
 
 <script>
-const VERSION = '3.3';
+const VERSION = '3.4';
 const API = 'https://frutimovil.duckdns.org/webhook/fm-app-api';
 const $ = id => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -829,14 +829,37 @@ async function responder(id) {
     if (!/^✅/.test(String(d.texto || ''))) return mostrarConfirmacion(d);
     if (despuesDeAnular && /Anulado/.test(d.texto)) { const pre = despuesDeAnular; despuesDeAnular = null; await cargar(); toast('Venta anulada. Ahora anótalo como pedido'); return abrirForm('pedido', pre); }
     vibra([12, 60, 18]);
-    abrirHoja('<div class="exito"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="40"/><path d="M26 43.5 37.500 55 59 31.500"/></svg><h3>Registrado</h3></div><div class="resumen">' + fmt(String(d.texto).replace(/^✅ Registrado\.\n/, '')) + '</div><div class="fila2"><button class="btn sec" onclick="cerrarHoja()">Listo</button><button class="btn prim" id="btnCompro" disabled>Comprobante…</button></div>');
+    abrirHoja('<div class="exito"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="40"/><path d="M26 43.5 37.500 55 59 31.500"/></svg><h3>Registrado</h3></div><div class="resumen">' + fmt(String(d.texto).replace(/^✅ Registrado\.\n/, '')) + '</div><div class="fila2"><button class="btn sec" onclick="cerrarHoja()">Listo</button><button class="btn prim" id="btnCompro" disabled>Comprobante…</button></div><div id="waPedido">' + botonWhatsApp(d.texto) + '</div>');
+    olvidarAnteriores(); // ya quedó registrado: no se vuelve al formulario ni a la confirmación
     await cargar();
+    if ($('waPedido')) $('waPedido').innerHTML = botonWhatsApp(d.texto);
     const primera = String(d.texto).split('\n')[1] || '';
     const m = ((TB && TB.actividad) || []).find(a => String(a.resumen).split('\n')[0] === primera.replace(/[*_]/g, ''));
     const b = $('btnCompro');
     if (b && m) { b.disabled = false; b.innerHTML = ic('receipt') + 'Comprobante'; b.onclick = () => { cerrarHoja(); verComprobante(m.numero); }; }
     else if (b) b.style.display = 'none';
   } catch (e) { toast(e.message); const b = $('btnSi'); if (b) { b.disabled = false; b.innerHTML = ic('check') + 'Sí, registrar'; } }
+}
+
+/* ---------- Avisar al cliente por WhatsApp cuando se anota un pedido ---------- */
+const telContacto = {};
+function telWhatsApp(t) { let d = String(t || '').replace(/\D/g, ''); if (d.length === 10 && d[0] === '0') d = '593' + d.slice(1); else if (d.length === 9 && d[0] === '9') d = '593' + d; return d.length >= 10 ? d : ''; }
+function avisoPedido(texto) {
+  const L = String(texto).replace(/^✅ Registrado\.\n/, '').split('\n').map(l => l.replace(/[*_]/g, '').trim()).filter(Boolean);
+  const m = (L[0] || '').match(/^📝 Pedido (\S+) — (.+)$/);
+  if (!m) return null;
+  const cliente = m[2].replace(/\s*\(.*\)\s*$/, '').split(' · ')[0].trim();
+  const items = L.filter(l => l[0] === '•').map(l => l.replace(/\s*⚠️.*$/, '').replace(/\s*\(precio por definir\)/, ''));
+  const entrega = L.find(l => /^Entrega:/i.test(l)), total = L.find(l => /^Total:/i.test(l));
+  const msg = ['Hola 👋 Le confirmo su pedido en Frutimóvil 🍓'].concat(items, total ? [total.split('·')[0].trim()] : [], entrega ? [entrega] : [], ['¡Muchas gracias!']).join('\n');
+  const tels = (C() && C().telefonos) || {};
+  const k = Object.keys(tels).find(n => n.toLowerCase() === cliente.toLowerCase());
+  const tel = telWhatsApp(k ? tels[k] : telContacto[cliente.toLowerCase()]);
+  return { cliente, tel, url: 'https://wa.me/' + tel + '?text=' + encodeURIComponent(msg) };
+}
+function botonWhatsApp(texto) {
+  const a = avisoPedido(texto); if (!a) return '';
+  return '<a class="btn ancho" style="margin-top:10px;background:#1FAF5A;color:#fff;text-decoration:none" target="_blank" rel="noopener" href="' + esc(a.url) + '">' + ic('send') + (a.tel ? 'Avisar a ' + esc(a.cliente) + ' por WhatsApp' : 'Avisar por WhatsApp (elige el chat)') + '</a>';
 }
 
 /* ---------- Contactos del teléfono (Android/Chrome) ---------- */
@@ -853,6 +876,7 @@ async function elegirContacto(campo) {
     if (igual) { s.value = igual.value; if (o) o.style.display = 'none'; }
     else { s.value = '__otro'; if (o) { o.style.display = 'block'; o.value = nombre; } }
     if (f.elements[campo + '_tel']) f.elements[campo + '_tel'].value = tel;
+    if (tel) telContacto[nombre.toLowerCase()] = tel;
     toast(nombre);
   } catch (e) { toast('No pude abrir los contactos'); }
 }
